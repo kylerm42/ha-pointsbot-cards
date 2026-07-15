@@ -1,0 +1,23 @@
+{
+  "name": "ha-pointsbot-cards",
+  "version": "0.1.0",
+  "description": "Home Assistant Lovelace cards for the PointsBot integration",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c rollup.config.js",
+    "watch": "rollup -c rollup.config.js --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "happy-dom": "^20.10.6",
+    "lit": "^3.3.3",
+    "rollup": "^4.62.2",
+    "tslib": "^2.8.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.10"
+  }
+}
