@@ -5,6 +5,7 @@ import type { CardConfig, PointsBotEntityAttributes } from "./types.js";
 // Side-effect imports so the custom elements are registered when the card loads.
 import "./collapsible-section.js";
 import "./adjust-points-dialog.js";
+import "./pointsbot-person-card-editor.js";
 
 /**
  * Minimal HomeAssistant interface — only the surface area consumed by this
@@ -273,6 +274,25 @@ export class PointsBotPersonCard extends LitElement {
 
   getCardSize(): number {
     return 3;
+  }
+
+  /**
+   * Returns the visual config editor element for the HA card editor panel.
+   * HA calls this method when the user opens the card's visual editor.
+   */
+  static getConfigElement(): HTMLElement {
+    return document.createElement("pointsbot-person-card-editor");
+  }
+
+  /**
+   * Returns a minimal valid config used as a starting point when the card is
+   * added from the HA "Add Card" GUI picker.
+   */
+  static getStubConfig(): CardConfig {
+    return {
+      type: "custom:pointsbot-person-card",
+      entity: "",
+    };
   }
 
   // -----------------------------------------------------------------
