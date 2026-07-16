@@ -21,11 +21,11 @@ Home Assistant Lovelace cards for the [PointsBot](https://github.com/kylerm42/ha
 ### Manual
 
 1. Download `pointsbot-cards.js` from the [latest release](https://github.com/kylerm42/ha-pointsbot-cards/releases).
-2. Copy it to `<HA config>/www/community/ha-pointsbot-cards/pointsbot-cards.js`.
+2. Copy it to `<HA config>/www/community/pointsbot-cards/pointsbot-cards.js`.
 3. In Home Assistant go to **Settings → Dashboards → Resources** and add:
 
    ```yaml
-   url: /local/community/ha-pointsbot-cards/pointsbot-cards.js
+   url: /local/community/pointsbot-cards/pointsbot-cards.js
    type: module
    ```
 
@@ -83,6 +83,6 @@ pnpm run build    # One-time production build
 pnpm run test     # Run unit tests (54 tests, Vitest + happy-dom)
 ```
 
-The `dist/` directory is gitignored. In the local development environment it is produced by the `card-builder` Docker service defined in `ha-pointsbot`'s `docker-compose.yml`, which mounts this repo and runs `npm run watch`. The output is then mounted into the HA container's `www/community/pointsbot-cards/` path, mimicking the HACS install path.
+The `dist/` directory is gitignored. In the local development environment it is produced by the `card-builder` Docker service defined in `ha-pointsbot`'s `docker-compose.yml`, which mounts this repo and runs `pnpm run watch` (using pnpm via corepack). The output is then mounted into the HA container's `www/community/pointsbot-cards/` path, mimicking the HACS install path.
 
 See [ha-pointsbot](https://github.com/kylerm42/ha-pointsbot) for the backend integration and full dev-environment setup instructions.

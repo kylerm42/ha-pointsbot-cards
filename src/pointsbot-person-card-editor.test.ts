@@ -61,15 +61,32 @@ describe("PointsBotPersonCardEditor", () => {
   });
 
   it("renders without throwing when no config is set", () => {
-    // Should not throw — editor renders gracefully with null config
-    expect(editor).toBeTruthy();
+    // Should not throw — editor renders gracefully with null config.
+    // Verify the element is an HTMLElement in the DOM with the expected tag name.
+    expect(editor).toBeInstanceOf(HTMLElement);
+    expect(editor.tagName.toLowerCase()).toBe("pointsbot-person-card-editor");
+    expect(document.body.contains(editor)).toBe(true);
   });
 
-  it("setConfig stores the config", () => {
+  it("setConfig propagates config — reflected via config-changed event on subsequent _entityChanged", () => {
     editor.setConfig({ type: "custom:pointsbot-person-card", entity: "sensor.pointsbot_alice" });
-    // No public accessor — verify indirectly via config-changed event round-trip
-    // (see next test)
-    expect(editor).toBeTruthy();
+
+    // Verify config was stored by triggering _entityChanged and asserting the
+    // existing entity value is carried forward into the event payload.
+    let firedConfig: Record<string, unknown> | null = null;
+    editor.addEventListener("config-changed", (ev: Event) => {
+      firedConfig = (ev as CustomEvent).detail.config;
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (editor as any)._entityChanged(
+      new CustomEvent("value-changed", { detail: { value: "sensor.pointsbot_alice" } })
+    );
+
+    expect(firedConfig).toEqual({
+      type: "custom:pointsbot-person-card",
+      entity: "sensor.pointsbot_alice",
+    });
   });
 
   it("fires config-changed with updated entity when _entityChanged is triggered", () => {

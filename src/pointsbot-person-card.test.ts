@@ -239,6 +239,121 @@ describe("PointsBotPersonCard", () => {
     });
   });
 
+  describe("service calls — toggle_base_task", () => {
+    it("calls hass.callService with correct arguments when a base task checkbox is clicked", async () => {
+      const el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+
+      const mockHass = makeHass("sensor.pointsbot_alice", "340", {
+        ...DEFAULT_ATTRS,
+        base_tasks: [{ id: "task-uuid-1", name: "Make bed", done: false }],
+      });
+
+      el.setConfig({
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      });
+      el.hass = mockHass;
+      await el.updateComplete;
+
+      const checkbox = el.shadowRoot?.querySelector(
+        'input[type="checkbox"]'
+      ) as HTMLInputElement | null;
+      expect(checkbox).not.toBeNull();
+      checkbox!.click();
+      await el.updateComplete;
+
+      expect(mockHass.callService).toHaveBeenCalledOnce();
+      expect(mockHass.callService).toHaveBeenCalledWith(
+        "pointsbot",
+        "toggle_base_task",
+        { person_id: "person.alice", task_id: "task-uuid-1" }
+      );
+
+      document.body.removeChild(el);
+    });
+  });
+
+  describe("service calls — complete_bonus_task", () => {
+    it("calls hass.callService with correct arguments when a bonus task Complete button is clicked", async () => {
+      const el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+
+      const mockHass = makeHass("sensor.pointsbot_alice", "340", {
+        ...DEFAULT_ATTRS,
+        bonus_tasks: [
+          {
+            id: "bonus-uuid-1",
+            name: "Vacuum living room",
+            points_value: 10,
+            enabled: true,
+            completions_this_week: 0,
+          },
+        ],
+      });
+
+      el.setConfig({
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      });
+      el.hass = mockHass;
+      await el.updateComplete;
+
+      // The collapsible section hides content via CSS (not DOM removal),
+      // so the button is queryable regardless of collapsed state.
+      const completeBtn = el.shadowRoot?.querySelector(
+        "button.complete-button"
+      ) as HTMLButtonElement | null;
+      expect(completeBtn).not.toBeNull();
+      completeBtn!.click();
+      await el.updateComplete;
+
+      expect(mockHass.callService).toHaveBeenCalledWith(
+        "pointsbot",
+        "complete_bonus_task",
+        { person_id: "person.alice", task_id: "bonus-uuid-1" }
+      );
+
+      document.body.removeChild(el);
+    });
+
+    it("does not render a Complete button for disabled bonus tasks", async () => {
+      const el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+
+      const mockHass = makeHass("sensor.pointsbot_alice", "340", {
+        ...DEFAULT_ATTRS,
+        bonus_tasks: [
+          {
+            id: "bonus-uuid-2",
+            name: "Clean bathroom",
+            points_value: 15,
+            enabled: false,
+            completions_this_week: 0,
+          },
+        ],
+      });
+
+      el.setConfig({
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      });
+      el.hass = mockHass;
+      await el.updateComplete;
+
+      const completeBtn = el.shadowRoot?.querySelector("button.complete-button");
+      expect(completeBtn).toBeNull();
+
+      document.body.removeChild(el);
+    });
+  });
+
   describe("render — live hass updates", () => {
     it("re-renders when hass is updated with new state", async () => {
       const el = document.createElement(
