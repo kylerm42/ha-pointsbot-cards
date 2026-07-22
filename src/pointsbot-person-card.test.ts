@@ -237,6 +237,17 @@ describe("PointsBotPersonCard", () => {
 
       expect(el.shadowRoot?.textContent).toContain("42.5");
     });
+
+    it("rerenders when Home Assistant publishes updated entity state", async () => {
+      el.hass = makeHass("sensor.pointsbot_alice", "341", {
+        ...DEFAULT_ATTRS,
+        weekly_points: 13,
+      });
+      await el.updateComplete;
+
+      expect(el.shadowRoot?.textContent).toContain("341");
+      expect(el.shadowRoot?.textContent).toContain("13");
+    });
   });
 
   describe("service calls — toggle_base_task", () => {
@@ -258,11 +269,11 @@ describe("PointsBotPersonCard", () => {
       el.hass = mockHass;
       await el.updateComplete;
 
-      const checkbox = el.shadowRoot?.querySelector(
-        'input[type="checkbox"]'
-      ) as HTMLInputElement | null;
-      expect(checkbox).not.toBeNull();
-      checkbox!.click();
+      const completeButton = el.shadowRoot?.querySelector(
+        "button.circle-button"
+      ) as HTMLButtonElement | null;
+      expect(completeButton).not.toBeNull();
+      completeButton!.click();
       await el.updateComplete;
 
       expect(mockHass.callService).toHaveBeenCalledOnce();
@@ -306,7 +317,7 @@ describe("PointsBotPersonCard", () => {
       // The collapsible section hides content via CSS (not DOM removal),
       // so the button is queryable regardless of collapsed state.
       const completeBtn = el.shadowRoot?.querySelector(
-        "button.complete-button"
+        ".bonus-actions .circle-button:last-of-type"
       ) as HTMLButtonElement | null;
       expect(completeBtn).not.toBeNull();
       completeBtn!.click();
@@ -321,7 +332,7 @@ describe("PointsBotPersonCard", () => {
       document.body.removeChild(el);
     });
 
-    it("does not render a Complete button for disabled bonus tasks", async () => {
+    it("disables both controls for disabled bonus tasks", async () => {
       const el = document.createElement(
         "pointsbot-person-card"
       ) as PointsBotPersonCard;
@@ -347,8 +358,13 @@ describe("PointsBotPersonCard", () => {
       el.hass = mockHass;
       await el.updateComplete;
 
-      const completeBtn = el.shadowRoot?.querySelector("button.complete-button");
-      expect(completeBtn).toBeNull();
+      const bonusButtons = el.shadowRoot?.querySelectorAll(
+        ".bonus-actions button"
+      );
+      expect(bonusButtons).toHaveLength(2);
+      bonusButtons?.forEach((button) =>
+        expect((button as HTMLButtonElement).disabled).toBe(true)
+      );
 
       document.body.removeChild(el);
     });

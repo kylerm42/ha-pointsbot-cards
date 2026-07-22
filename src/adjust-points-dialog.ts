@@ -40,16 +40,20 @@ export class AdjustPointsDialog extends LitElement {
       cursor: pointer;
       padding: 8px 16px;
       border-radius: var(--ha-card-border-radius, 8px);
-      border: 1px solid var(--primary-color, #03a9f4);
-      background: transparent;
-      color: var(--primary-color, #03a9f4);
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: background 0.2s ease;
+       border: none;
+       background: #b29fe8;
+       color: #17151d;
+       font-size: 18px;
+       font-weight: 500;
+       padding: 16px 32px;
+       min-width: 260px;
+       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+       transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
     }
 
     .open-button:hover {
-      background: color-mix(in srgb, var(--primary-color, #03a9f4) 10%, transparent);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     }
 
     .dialog-overlay {

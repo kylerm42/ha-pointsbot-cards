@@ -79,12 +79,12 @@ describe("PointsBotCollapsibleSection", () => {
 
   afterEach(() => cleanup(el));
 
-  it("starts collapsed by default (open property absent)", async () => {
+  it("starts open by default (open property absent)", async () => {
     el = makeEl("pointsbot-collapsible-section");
     await (el as LitElement).updateComplete;
 
     const content = el.shadowRoot?.querySelector(".section-content");
-    expect(content?.classList.contains("open")).toBe(false);
+    expect(content?.classList.contains("open")).toBe(true);
   });
 
   it("starts open when open property is set before connection", async () => {
@@ -106,21 +106,21 @@ describe("PointsBotCollapsibleSection", () => {
     ) as HTMLElement;
     expect(header).not.toBeNull();
 
-    // Initially collapsed
+    // Initially open
     let content = el.shadowRoot?.querySelector(".section-content");
+    expect(content?.classList.contains("open")).toBe(true);
+
+    // Click to close
+    header.click();
+    await (el as LitElement).updateComplete;
+    content = el.shadowRoot?.querySelector(".section-content");
     expect(content?.classList.contains("open")).toBe(false);
 
-    // Click to open
+    // Click to open again
     header.click();
     await (el as LitElement).updateComplete;
     content = el.shadowRoot?.querySelector(".section-content");
     expect(content?.classList.contains("open")).toBe(true);
-
-    // Click to close again
-    header.click();
-    await (el as LitElement).updateComplete;
-    content = el.shadowRoot?.querySelector(".section-content");
-    expect(content?.classList.contains("open")).toBe(false);
   });
 
   it("rotates chevron when open", async () => {
@@ -130,9 +130,6 @@ describe("PointsBotCollapsibleSection", () => {
     const header = el.shadowRoot?.querySelector(
       ".section-header"
     ) as HTMLElement;
-    header.click();
-    await (el as LitElement).updateComplete;
-
     const chevron = el.shadowRoot?.querySelector(".section-header-chevron");
     expect(chevron?.classList.contains("open")).toBe(true);
   });
@@ -223,7 +220,9 @@ describe("PointsBotPersonCard — bonus task disabled-state rendering", () => {
       (r) => !r.classList.contains("disabled")
     );
     expect(enabledRows.length).toBe(1);
-    expect(enabledRows[0].querySelector(".complete-button")).not.toBeNull();
+    expect(
+      enabledRows[0].querySelector(".bonus-actions .circle-button:last-of-type")
+    ).not.toBeNull();
   });
 
   it("still shows completions_this_week count for disabled task", () => {
@@ -243,7 +242,7 @@ describe("PointsBotPersonCard — bonus task disabled-state rendering", () => {
     card.hass = hassWithCompletions;
     return card.updateComplete.then(() => {
       const text = card.shadowRoot?.textContent ?? "";
-      expect(text).toContain("3×");
+      expect(text).toContain("3");
     });
   });
 
@@ -258,7 +257,7 @@ describe("PointsBotPersonCard — bonus task disabled-state rendering", () => {
     card.hass = makeHassWithTasks({ base_tasks: [] });
     await card.updateComplete;
     const text = card.shadowRoot?.textContent ?? "";
-    expect(text).toContain("No base tasks");
+    expect(text).toContain("No standard tasks");
   });
 
   it("shows empty-state message when weekly_adjustments is empty", async () => {

@@ -36,6 +36,7 @@ export interface PointsBotEntityAttributes {
   person_id: string;
   name: string | null;
   picture: string | null;
+  icon?: string;
 }
 
 export interface CardConfig {

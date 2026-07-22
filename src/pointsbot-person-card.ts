@@ -1,11 +1,12 @@
-import { LitElement, html, css, nothing } from "lit";
+import { LitElement, html, css, nothing, unsafeCSS } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import type { CardConfig, PointsBotEntityAttributes } from "./types.js";
 
 // Side-effect imports so the custom elements are registered when the card loads.
 import "./collapsible-section.js";
 import "./adjust-points-dialog.js";
-import "./pointsbot-person-card-editor.js";
+
+const ACCENT_COLOR = "#B29FE8";
 
 /**
  * Minimal HomeAssistant interface — only the surface area consumed by this
@@ -23,7 +24,7 @@ interface HomeAssistant {
   callService: (
     domain: string,
     service: string,
-    serviceData?: Record<string, unknown>
+    serviceData?: Record<string, unknown>,
   ) => Promise<void>;
 }
 
@@ -58,8 +59,16 @@ export class PointsBotPersonCard extends LitElement {
       display: block;
     }
 
+    ha-card {
+      background: transparent;
+      box-shadow: none;
+      border: none;
+    }
+
     .card {
-      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
     .error {
@@ -75,175 +84,219 @@ export class PointsBotPersonCard extends LitElement {
     }
 
     .avatar {
-      width: 48px;
-      height: 48px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
       object-fit: cover;
-      background-color: var(--secondary-background-color, #e0e0e0);
+      background-color: ${unsafeCSS(ACCENT_COLOR)};
     }
 
     .avatar-placeholder {
-      width: 48px;
-      height: 48px;
+      width: 64px;
+      height: 64px;
       border-radius: 50%;
-      background-color: var(--secondary-background-color, #e0e0e0);
+      background-color: ${unsafeCSS(ACCENT_COLOR)};
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 20px;
+      font-size: 24px;
     }
 
     .name {
-      font-size: 1.2rem;
-      font-weight: 600;
+      font-size: 24px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .person-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .person-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .points-row {
       display: flex;
-      gap: 24px;
-      margin-bottom: 16px;
+      align-items: baseline;
+      justify-content: space-between;
     }
 
     .points-block {
       display: flex;
-      flex-direction: column;
-      align-items: center;
+      align-items: baseline;
+      gap: 8px;
     }
 
     .points-value {
-      font-size: 2rem;
-      font-weight: 700;
+      font-size: 20px;
+      font-weight: bold;
       line-height: 1;
+      color: var(--secondary-text-color, #9e9e9e);
     }
 
     .points-label {
-      font-size: 0.75rem;
-      color: var(--secondary-text-color, #727272);
+      font-size: 12px;
+      color: var(--secondary-text-color, #9e9e9e);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
 
+    .weekly-points {
+      color: ${unsafeCSS(ACCENT_COLOR)};
+      font-size: 24px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
     .adjust-row {
-      margin-bottom: 16px;
+      display: flex;
+      justify-content: center;
     }
 
     /* ---------- Base tasks ---------- */
 
-    .task-row {
+    .section-item-row {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 8px 0;
+      gap: 16px;
+      padding: 16px;
       border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.08));
     }
 
-    .task-row:last-child {
+    .section-item-row:last-child {
       border-bottom: none;
     }
 
     .task-checkbox {
-      width: 18px;
-      height: 18px;
+      width: 48px;
+      height: 48px;
+      margin-left: auto;
+      order: 2;
       cursor: pointer;
-      accent-color: var(--primary-color, #03a9f4);
+      accent-color: ${unsafeCSS(ACCENT_COLOR)};
       flex-shrink: 0;
     }
 
-    .task-name {
+    .section-item-title {
       flex: 1;
-      font-size: 0.9rem;
+      font-size: 20px;
       color: var(--primary-text-color);
     }
 
+    .section-item-subtitle {
+      font-size: 14px;
+      color: var(--secondary-text-color, #727272);
+    }
+
     /* ---------- Bonus tasks ---------- */
-
-    .bonus-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.08));
-    }
-
-    .bonus-row:last-child {
-      border-bottom: none;
-    }
 
     .bonus-row.disabled {
       opacity: 0.45;
     }
 
-    .bonus-info {
+    .section-item-info {
       flex: 1;
+      min-width: 0;
     }
 
-    .bonus-name {
-      font-size: 0.9rem;
-      color: var(--primary-text-color);
+    .bonus-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: auto;
+      flex-shrink: 0;
     }
 
-    .bonus-meta {
-      font-size: 0.78rem;
-      color: var(--secondary-text-color, #727272);
+    .bonus-count {
+      min-width: 24px;
+      text-align: center;
+      font-size: 18px;
     }
 
-    .complete-button {
-      padding: 4px 10px;
-      border-radius: 6px;
-      border: 1px solid var(--primary-color, #03a9f4);
+    .circle-button,
+    .adjustment-amount {
+      width: 48px;
+      height: 48px;
+      box-sizing: border-box;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 2px solid ${unsafeCSS(ACCENT_COLOR)};
       background: transparent;
-      color: var(--primary-color, #03a9f4);
-      font-size: 0.8rem;
+      color: ${unsafeCSS(ACCENT_COLOR)};
+      line-height: 1;
       cursor: pointer;
       flex-shrink: 0;
+      padding: 0;
+      font-family: inherit;
       transition: background 0.15s ease;
     }
 
-    .complete-button:hover {
-      background: color-mix(in srgb, var(--primary-color, #03a9f4) 10%, transparent);
+    .circle-button {
+      font-size: 28px;
+    }
+
+    .adjustment-amount {
+      font-size: 18px;
+    }
+
+    .circle-button:hover:not(:disabled) {
+      background: color-mix(
+        in srgb,
+        ${unsafeCSS(ACCENT_COLOR)} 15%,
+        transparent
+      );
+    }
+
+    .circle-button.completed {
+      background: ${unsafeCSS(ACCENT_COLOR)};
+      color: #17151d;
+    }
+
+    .circle-button:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .circle-button ha-icon {
+      --mdc-icon-size: 28px;
     }
 
     /* ---------- Weekly adjustments ---------- */
 
-    .adjustment-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.08));
-    }
-
-    .adjustment-row:last-child {
-      border-bottom: none;
-    }
-
     .adjustment-amount {
-      font-weight: 600;
-      font-size: 0.9rem;
-      flex-shrink: 0;
       min-width: 40px;
+      width: auto;
+      height: 40px;
+      padding: 0 10px;
+      font-weight: 600;
+      margin-left: auto;
+      order: 2;
+      cursor: default;
+      border: none;
+      color: #17151d;
+      white-space: nowrap;
+      border-radius: 24px;
     }
 
     .adjustment-amount.positive {
-      color: var(--success-color, #4caf50);
+      background: var(--success-color, #4caf50);
     }
 
     .adjustment-amount.negative {
-      color: var(--error-color, #db4437);
+      background: var(--error-color, #db4437);
     }
 
     .adjustment-info {
       flex: 1;
-    }
-
-    .adjustment-reason {
-      font-size: 0.9rem;
-      color: var(--primary-text-color);
-    }
-
-    .adjustment-timestamp {
-      font-size: 0.78rem;
-      color: var(--secondary-text-color, #727272);
     }
 
     /* ---------- Empty state ---------- */
@@ -263,6 +316,7 @@ export class PointsBotPersonCard extends LitElement {
 
   set hass(hass: HomeAssistant) {
     this._hass = hass;
+    this.requestUpdate();
   }
 
   setConfig(config: Partial<CardConfig>): void {
@@ -280,8 +334,20 @@ export class PointsBotPersonCard extends LitElement {
    * Returns the visual config editor element for the HA card editor panel.
    * HA calls this method when the user opens the card's visual editor.
    */
-  static getConfigElement(): HTMLElement {
-    return document.createElement("pointsbot-person-card-editor");
+  static getConfigForm() {
+    return {
+      schema: [
+        {
+          name: "entity",
+          required: true,
+          selector: {
+            entity: {
+              filter: { domain: "sensor", integration: "pointsbot" },
+            },
+          },
+        },
+      ],
+    };
   }
 
   /**
@@ -310,6 +376,32 @@ export class PointsBotPersonCard extends LitElement {
     this._hass?.callService("pointsbot", "complete_bonus_task", {
       person_id: personId,
       task_id: taskId,
+    });
+  }
+
+  private _uncompleteBonusTask(personId: string, taskId: string) {
+    this._hass?.callService("pointsbot", "uncomplete_bonus_task", {
+      person_id: personId,
+      task_id: taskId,
+    });
+  }
+
+  private _renderSectionItemInfo(title: string, subtitle?: unknown) {
+    return html`
+      <div class="section-item-info">
+        <div class="section-item-title">${title}</div>
+        ${subtitle === undefined
+          ? nothing
+          : html`<div class="section-item-subtitle">${subtitle}</div>`}
+      </div>
+    `;
+  }
+
+  private _formatAdjustmentTimestamp(timestamp: string) {
+    return new Date(timestamp).toLocaleString(undefined, {
+      weekday: "long",
+      hour: "numeric",
+      minute: "2-digit",
     });
   }
 
@@ -356,6 +448,7 @@ export class PointsBotPersonCard extends LitElement {
     const weeklyPoints = attrs.weekly_points ?? 0;
     const name = attrs.name ?? entityId;
     const picture = attrs.picture ?? null;
+    const icon = attrs.icon ?? "mdi:star-circle";
     const personId = attrs.person_id;
     const baseTasks = attrs.base_tasks ?? [];
     const bonusTasks = attrs.bonus_tasks ?? [];
@@ -368,94 +461,99 @@ export class PointsBotPersonCard extends LitElement {
             ${picture
               ? html`<img class="avatar" src="${picture}" alt="${name}" />`
               : html`<div class="avatar-placeholder">👤</div>`}
-            <span class="name">${name}</span>
-          </div>
-
-          <div class="points-row">
-            <div class="points-block">
-              <span class="points-value">${totalPoints}</span>
-              <span class="points-label">Total Points</span>
+            <div class="person-info">
+              <div class="points-row">
+                <span class="name person-name">${name}</span>
+                <span class="weekly-points">
+                  ${weeklyPoints} <ha-icon icon="${icon}"></ha-icon>
+                </span>
+              </div>
+              <div class="points-block">
+                <span class="points-value">${totalPoints}</span>
+                <span class="points-label">Total</span>
+              </div>
             </div>
-            <div class="points-block">
-              <span class="points-value">${weeklyPoints}</span>
-              <span class="points-label">This Week</span>
-            </div>
-          </div>
-
-          <div class="adjust-row">
-            <pointsbot-adjust-points-dialog
-              .hass=${hass}
-              personId=${personId}
-            ></pointsbot-adjust-points-dialog>
           </div>
 
           <!-- Base Tasks -->
-          <pointsbot-collapsible-section
-            label="Base Tasks"
-            count=${baseTasks.length}
-          >
+          <pointsbot-collapsible-section label="Standard" open>
             ${baseTasks.length === 0
-              ? html`<p class="empty-state">No base tasks.</p>`
+              ? html`<p class="empty-state">No standard tasks.</p>`
               : baseTasks.map(
                   (task) => html`
-                    <div class="task-row">
-                      <input
-                        class="task-checkbox"
-                        type="checkbox"
-                        .checked=${task.done}
-                        @change=${() =>
-                          this._toggleBaseTask(personId, task.id)}
-                      />
-                      <span class="task-name">${task.name}</span>
+                    <div class="section-item-row task-row">
+                      ${this._renderSectionItemInfo(task.name)}
+                      <button
+                        class="circle-button ${task.done ? "completed" : ""}"
+                        aria-label="${task.done
+                          ? "Uncomplete"
+                          : "Complete"} ${task.name}"
+                        @click=${() => this._toggleBaseTask(personId, task.id)}
+                      >
+                        <ha-icon icon="mdi:check"></ha-icon>
+                      </button>
                     </div>
-                  `
+                  `,
                 )}
           </pointsbot-collapsible-section>
 
           <!-- Bonus Tasks -->
-          <pointsbot-collapsible-section
-            label="Bonus Tasks"
-            count=${bonusTasks.length}
-          >
+          <pointsbot-collapsible-section label="Bonus" open>
             ${bonusTasks.length === 0
               ? html`<p class="empty-state">No bonus tasks.</p>`
               : bonusTasks.map(
                   (task) => html`
-                    <div class="bonus-row ${task.enabled ? "" : "disabled"}">
-                      <div class="bonus-info">
-                        <div class="bonus-name">${task.name}</div>
-                        <div class="bonus-meta">
-                          ${task.points_value} pts ·
-                          ${task.completions_this_week}× this week
-                          ${task.enabled ? "" : " · disabled"}
-                        </div>
+                    <div
+                      class="section-item-row bonus-row ${task.enabled
+                        ? ""
+                        : "disabled"}"
+                    >
+                      ${this._renderSectionItemInfo(
+                        task.name,
+                        html`${task.points_value}
+                          <ha-icon icon="${icon}"></ha-icon>
+                          ${task.enabled ? "" : " · disabled"}`,
+                      )}
+                      <div class="bonus-actions">
+                        <button
+                          class="circle-button"
+                          ?disabled=${!task.enabled ||
+                          task.completions_this_week === 0}
+                          aria-label="Uncomplete ${task.name}"
+                          @click=${() =>
+                            this._uncompleteBonusTask(personId, task.id)}
+                        >
+                          −
+                        </button>
+                        <span class="bonus-count"
+                          >${task.completions_this_week}</span
+                        >
+                        <button
+                          class="circle-button"
+                          ?disabled=${!task.enabled}
+                          aria-label="Complete ${task.name}"
+                          @click=${() =>
+                            this._completeBonusTask(personId, task.id)}
+                        >
+                          +
+                        </button>
                       </div>
-                      ${task.enabled
-                        ? html`
-                            <button
-                              class="complete-button"
-                              @click=${() =>
-                                this._completeBonusTask(personId, task.id)}
-                            >
-                              Complete
-                            </button>
-                          `
-                        : nothing}
                     </div>
-                  `
+                  `,
                 )}
           </pointsbot-collapsible-section>
 
           <!-- Weekly Adjustments -->
-          <pointsbot-collapsible-section
-            label="Adjustments"
-            count=${adjustments.length}
-          >
+          <pointsbot-collapsible-section label="Adjustments" open>
             ${adjustments.length === 0
               ? html`<p class="empty-state">No adjustments this week.</p>`
               : adjustments.map(
                   (adj) => html`
-                    <div class="adjustment-row">
+                    <div class="section-item-row adjustment-row">
+                      ${this._renderSectionItemInfo(
+                        adj.reason,
+                        this._formatAdjustmentTimestamp(adj.timestamp),
+                      )}
                       <span
                         class="adjustment-amount ${adj.amount >= 0
                           ? "positive"
@@ -463,16 +561,17 @@ export class PointsBotPersonCard extends LitElement {
                       >
                         ${adj.amount >= 0 ? "+" : ""}${adj.amount}
                       </span>
-                      <div class="adjustment-info">
-                        <div class="adjustment-reason">${adj.reason}</div>
-                        <div class="adjustment-timestamp">
-                          ${new Date(adj.timestamp).toLocaleString()}
-                        </div>
-                      </div>
                     </div>
-                  `
+                  `,
                 )}
           </pointsbot-collapsible-section>
+
+          <div class="adjust-row">
+            <pointsbot-adjust-points-dialog
+              .hass=${hass}
+              .personId=${personId}
+            ></pointsbot-adjust-points-dialog>
+          </div>
         </div>
       </ha-card>
     `;

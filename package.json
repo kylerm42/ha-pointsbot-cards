@@ -2,6 +2,7 @@
   "name": "ha-pointsbot-cards",
   "version": "0.1.0",
   "description": "Home Assistant Lovelace cards for the PointsBot integration",
+  "packageManager": "pnpm@11.0.8",
   "type": "module",
   "scripts": {
     "build": "rollup -c rollup.config.js",

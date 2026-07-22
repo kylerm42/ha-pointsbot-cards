@@ -28,8 +28,8 @@ export class PointsBotCollapsibleSection extends LitElement {
   /** Item count shown in the header summary (e.g. 3 → "Base Tasks (3)"). */
   @property({ type: Number }) count = 0;
 
-  /** Whether the section starts open. Defaults to false (collapsed). */
-  @property({ type: Boolean }) open = false;
+  /** Whether the section starts open. Defaults to true. */
+  @property({ type: Boolean }) open = true;
 
   @state() private _open = false;
 
@@ -51,11 +51,12 @@ export class PointsBotCollapsibleSection extends LitElement {
       justify-content: space-between;
       align-items: center;
       padding: 10px 14px;
-      font-weight: 500;
-      font-size: 0.9rem;
+       font-weight: 500;
+       font-size: 24px;
       cursor: pointer;
       user-select: none;
-      background-color: var(--secondary-background-color, #f5f5f5);
+       background-color: #b29fe8;
+       color: #17151d;
       transition: filter 0.2s ease;
     }
 
@@ -69,7 +70,7 @@ export class PointsBotCollapsibleSection extends LitElement {
 
     .section-header-label {
       flex: 1;
-      color: var(--primary-text-color);
+       color: #17151d;
     }
 
     .section-header-chevron {
@@ -79,7 +80,7 @@ export class PointsBotCollapsibleSection extends LitElement {
       align-items: center;
       justify-content: center;
       transition: transform 0.3s ease;
-      color: var(--secondary-text-color, #727272);
+       color: #17151d;
     }
 
     .section-header-chevron.open {
@@ -113,11 +114,11 @@ export class PointsBotCollapsibleSection extends LitElement {
 
     .section-content-inner {
       overflow: hidden;
-      padding: 0 14px;
+      padding: 0;
     }
 
     .section-content.open .section-content-inner {
-      padding: 10px 14px;
+      padding: 0;
     }
   `;
 

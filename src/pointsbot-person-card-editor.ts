@@ -33,6 +33,7 @@ export class PointsBotPersonCardEditor extends LitElement {
     }
 
     ha-entity-picker {
+      display: block;
       width: 100%;
     }
   `;

@@ -37,12 +37,20 @@ describe("PointsBotPersonCard — static methods", () => {
     expect(stub.entity).toBe("");
   });
 
-  it("getConfigElement returns an HTMLElement", () => {
+  it("getConfigForm returns a native sensor entity selector", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const CardClass = customElements.get("pointsbot-person-card") as any;
-    const el = CardClass.getConfigElement();
-    expect(el).toBeInstanceOf(HTMLElement);
-    expect(el.tagName.toLowerCase()).toBe("pointsbot-person-card-editor");
+    expect(CardClass.getConfigForm()).toEqual({
+      schema: [
+        {
+          name: "entity",
+          required: true,
+          selector: {
+            entity: { filter: { domain: "sensor", integration: "pointsbot" } },
+          },
+        },
+      ],
+    });
   });
 });
 
