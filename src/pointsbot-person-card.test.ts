@@ -15,6 +15,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import "./pointsbot-person-card.js";
 import type { PointsBotPersonCard } from "./pointsbot-person-card.js";
+import type { AddTaskDialog } from "./add-task-dialog.js";
+import type { AdjustPointsDialog } from "./adjust-points-dialog.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -396,6 +398,141 @@ describe("PointsBotPersonCard", () => {
       expect(el.shadowRoot?.textContent).toContain("20");
 
       document.body.removeChild(el);
+    });
+  });
+
+  describe("action row — Add Task and Adjust Points dialogs", () => {
+    let el: PointsBotPersonCard;
+    let mockHass: ReturnType<typeof makeHass>;
+
+    beforeEach(async () => {
+      el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+
+      el.setConfig({
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      });
+      mockHass = makeHass("sensor.pointsbot_alice", "340", DEFAULT_ATTRS);
+      el.hass = mockHass;
+      await el.updateComplete;
+    });
+
+    afterEach(() => {
+      document.body.removeChild(el);
+    });
+
+    it("renders a single .action-row containing both dialog elements", () => {
+      const actionRows = el.shadowRoot?.querySelectorAll(".action-row");
+      expect(actionRows).toHaveLength(1);
+
+      const row = actionRows![0];
+      const addTask = row.querySelector("pointsbot-add-task-dialog");
+      const adjustPoints = row.querySelector("pointsbot-adjust-points-dialog");
+
+      expect(addTask).not.toBeNull();
+      expect(adjustPoints).not.toBeNull();
+    });
+
+    it("renders the Add Task dialog before the Adjust Points dialog in DOM order", () => {
+      const row = el.shadowRoot?.querySelector(".action-row") as HTMLElement;
+      const children = Array.from(row.children);
+      const addTaskIdx = children.findIndex(
+        (c) => c.tagName.toLowerCase() === "pointsbot-add-task-dialog"
+      );
+      const adjustIdx = children.findIndex(
+        (c) => c.tagName.toLowerCase() === "pointsbot-adjust-points-dialog"
+      );
+
+      expect(addTaskIdx).toBeGreaterThanOrEqual(0);
+      expect(adjustIdx).toBeGreaterThanOrEqual(0);
+      expect(addTaskIdx).toBeLessThan(adjustIdx);
+    });
+
+    it("wires the card's hass to both embedded dialog elements", () => {
+      const addTask = el.shadowRoot?.querySelector(
+        "pointsbot-add-task-dialog"
+      ) as AddTaskDialog;
+      const adjustPoints = el.shadowRoot?.querySelector(
+        "pointsbot-adjust-points-dialog"
+      ) as AdjustPointsDialog;
+
+      expect(addTask).not.toBeNull();
+      expect(adjustPoints).not.toBeNull();
+
+      // Both dialogs should hold the same hass reference the card was
+      // configured with.
+      expect(addTask.hass).toBe(mockHass);
+      expect(adjustPoints.hass).toBe(mockHass);
+    });
+
+    it("wires the sensor's person_id to both embedded dialog elements (verified via a successful service call)", async () => {
+      const addTask = el.shadowRoot?.querySelector(
+        "pointsbot-add-task-dialog"
+      ) as AddTaskDialog;
+      const adjustPoints = el.shadowRoot?.querySelector(
+        "pointsbot-adjust-points-dialog"
+      ) as AdjustPointsDialog;
+      expect(addTask).not.toBeNull();
+      expect(adjustPoints).not.toBeNull();
+
+      // Trigger a successful Add Task submission from the embedded dialog.
+      const addTaskOpen = addTask.shadowRoot?.querySelector(
+        ".open-button"
+      ) as HTMLButtonElement;
+      addTaskOpen.click();
+      await addTask.updateComplete;
+      const addTaskName = addTask.shadowRoot?.querySelector(
+        "#task-name"
+      ) as HTMLInputElement;
+      addTaskName.value = "Make bed";
+      addTaskName.dispatchEvent(new Event("input"));
+      await addTask.updateComplete;
+      const addTaskSubmit = addTask.shadowRoot?.querySelector(
+        ".submit-button"
+      ) as HTMLButtonElement;
+      addTaskSubmit.click();
+      await addTask.updateComplete;
+      await Promise.resolve();
+
+      // Trigger a successful Adjust Points submission from the embedded dialog.
+      const adjustOpen = adjustPoints.shadowRoot?.querySelector(
+        ".open-button"
+      ) as HTMLButtonElement;
+      adjustOpen.click();
+      await adjustPoints.updateComplete;
+      const amountInput = adjustPoints.shadowRoot?.querySelector(
+        "#amount"
+      ) as HTMLInputElement;
+      const reasonInput = adjustPoints.shadowRoot?.querySelector(
+        "#reason"
+      ) as HTMLTextAreaElement;
+      amountInput.value = "5";
+      amountInput.dispatchEvent(new Event("input"));
+      reasonInput.value = "Good job";
+      reasonInput.dispatchEvent(new Event("input"));
+      await adjustPoints.updateComplete;
+      const adjustSubmit = adjustPoints.shadowRoot?.querySelector(
+        ".submit-button"
+      ) as HTMLButtonElement;
+      adjustSubmit.click();
+      await adjustPoints.updateComplete;
+      await Promise.resolve();
+
+      // Both service calls should have routed through the card's mock hass
+      // and used the sensor's person_id attribute ("person.alice").
+      const addTaskCall = mockHass.callService.mock.calls.find(
+        (c) => c[1] === "add_task"
+      );
+      const adjustCall = mockHass.callService.mock.calls.find(
+        (c) => c[1] === "adjust_points"
+      );
+      expect(addTaskCall).toBeDefined();
+      expect(adjustCall).toBeDefined();
+      expect(addTaskCall![2]).toMatchObject({ person_id: "person.alice" });
+      expect(adjustCall![2]).toMatchObject({ person_id: "person.alice" });
     });
   });
 });

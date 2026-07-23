@@ -5,6 +5,7 @@ import type { CardConfig, PointsBotEntityAttributes } from "./types.js";
 // Side-effect imports so the custom elements are registered when the card loads.
 import "./collapsible-section.js";
 import "./adjust-points-dialog.js";
+import "./add-task-dialog.js";
 
 const ACCENT_COLOR = "#B29FE8";
 
@@ -155,9 +156,11 @@ export class PointsBotPersonCard extends LitElement {
       white-space: nowrap;
     }
 
-    .adjust-row {
-      display: flex;
-      justify-content: center;
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      align-items: stretch;
     }
 
     /* ---------- Base tasks ---------- */
@@ -191,8 +194,15 @@ export class PointsBotPersonCard extends LitElement {
     }
 
     .section-item-subtitle {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
       font-size: 14px;
       color: var(--secondary-text-color, #727272);
+    }
+
+    .bonus-row .section-item-subtitle ha-icon {
+      --mdc-icon-size: 18px;
     }
 
     /* ---------- Bonus tasks ---------- */
@@ -217,7 +227,7 @@ export class PointsBotPersonCard extends LitElement {
     .bonus-count {
       min-width: 24px;
       text-align: center;
-      font-size: 18px;
+      font-size: 24px;
     }
 
     .circle-button,
@@ -566,7 +576,11 @@ export class PointsBotPersonCard extends LitElement {
                 )}
           </pointsbot-collapsible-section>
 
-          <div class="adjust-row">
+          <div class="action-row">
+            <pointsbot-add-task-dialog
+              .hass=${hass}
+              .personId=${personId}
+            ></pointsbot-add-task-dialog>
             <pointsbot-adjust-points-dialog
               .hass=${hass}
               .personId=${personId}

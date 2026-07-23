@@ -9,25 +9,31 @@ interface HomeAssistant {
   ) => Promise<void>;
 }
 
+type TaskType = "base" | "bonus";
+
 /**
- * AdjustPointsDialog
+ * AddTaskDialog
  *
- * A button that opens a modal-style dialog for submitting a manual point
- * adjustment. Calls pointsbot.adjust_points with { person_id, amount, reason }.
+ * A button that opens a modal-style dialog for creating a new base or bonus
+ * task for the configured person. Calls pointsbot.add_task with
+ *   { person_id, task_type, name, [points_value] }
+ *
  * Client-side validation mirrors the backend's requirements:
- *   - amount must be a non-zero integer
- *   - reason must be a non-empty string
+ *   - name must be a non-empty trimmed string
+ *   - bonus tasks require a positive integer points_value of at least 1
+ *   - base tasks must not include points_value
  */
-@customElement("pointsbot-adjust-points-dialog")
-export class AdjustPointsDialog extends LitElement {
+@customElement("pointsbot-add-task-dialog")
+export class AddTaskDialog extends LitElement {
   @property({ attribute: false }) hass: HomeAssistant | null = null;
 
   /** The person_id attribute from the sensor entity (e.g. "person.alice"). */
   @property({ type: String }) personId = "";
 
   @state() private _open = false;
-  @state() private _amount = "";
-  @state() private _reason = "";
+  @state() private _taskType: TaskType = "base";
+  @state() private _name = "";
+  @state() private _pointsValue = "";
   @state() private _error = "";
   @state() private _submitting = false;
 
@@ -97,7 +103,7 @@ export class AdjustPointsDialog extends LitElement {
     }
 
     input,
-    textarea {
+    select {
       padding: 8px 12px;
       border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
       border-radius: 6px;
@@ -109,14 +115,8 @@ export class AdjustPointsDialog extends LitElement {
     }
 
     input:focus,
-    textarea:focus {
+    select:focus {
       border-color: var(--primary-color, #03a9f4);
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 60px;
-      font-family: inherit;
     }
 
     .error-message {
@@ -160,8 +160,9 @@ export class AdjustPointsDialog extends LitElement {
   `;
 
   private _openDialog() {
-    this._amount = "";
-    this._reason = "";
+    this._taskType = "base";
+    this._name = "";
+    this._pointsValue = "";
     this._error = "";
     this._submitting = false;
     this._open = true;
@@ -171,44 +172,82 @@ export class AdjustPointsDialog extends LitElement {
     this._open = false;
   }
 
-  private _onAmountInput(e: Event) {
-    this._amount = (e.target as HTMLInputElement).value;
+  private _onTaskTypeChange(e: Event) {
+    const next = (e.target as HTMLSelectElement).value as TaskType;
+    // When switching to base, ensure no stale points_value can be sent in the
+    // base payload. The backend rejects points_value for base tasks.
+    if (next === "base") {
+      this._pointsValue = "";
+    }
+    this._taskType = next;
     this._error = "";
   }
 
-  private _onReasonInput(e: Event) {
-    this._reason = (e.target as HTMLTextAreaElement).value;
+  private _onNameInput(e: Event) {
+    this._name = (e.target as HTMLInputElement).value;
+    this._error = "";
+  }
+
+  private _onPointsValueInput(e: Event) {
+    this._pointsValue = (e.target as HTMLInputElement).value;
     this._error = "";
   }
 
   private async _submit() {
     // Client-side validation mirrors backend requirements.
-    const amountNum = parseInt(this._amount, 10);
-    if (!this._amount || isNaN(amountNum) || amountNum === 0) {
-      this._error = "Amount must be a non-zero integer.";
-      return;
-    }
-    const reason = this._reason.trim();
-    if (!reason) {
-      this._error = "Reason is required.";
+    const name = this._name.trim();
+    if (!name) {
+      this._error = "Task name is required.";
       return;
     }
 
+    if (this._taskType === "bonus") {
+      const trimmed = this._pointsValue.trim();
+      if (!trimmed) {
+        this._error = "Points value is required for bonus tasks.";
+        return;
+      }
+      const pointsNum = Number(trimmed);
+      if (!Number.isInteger(pointsNum) || pointsNum < 1) {
+        this._error = "Points value must be a positive integer of at least 1.";
+        return;
+      }
+      if (!this.hass) {
+        this._error = "Could not add task. Please try again.";
+        return;
+      }
+      this._submitting = true;
+      try {
+        await this.hass.callService("pointsbot", "add_task", {
+          person_id: this.personId,
+          task_type: "bonus",
+          name,
+          points_value: pointsNum,
+        });
+        this._open = false;
+      } catch {
+        this._error = "Could not add task. Please try again.";
+      } finally {
+        this._submitting = false;
+      }
+      return;
+    }
+
+    // Base task — do not pass points_value.
     if (!this.hass) {
-      this._error = "Home Assistant is not available.";
+      this._error = "Could not add task. Please try again.";
       return;
     }
-
     this._submitting = true;
     try {
-      await this.hass.callService("pointsbot", "adjust_points", {
+      await this.hass.callService("pointsbot", "add_task", {
         person_id: this.personId,
-        amount: amountNum,
-        reason,
+        task_type: "base",
+        name,
       });
       this._open = false;
     } catch {
-      this._error = "Service call failed. Please try again.";
+      this._error = "Could not add task. Please try again.";
     } finally {
       this._submitting = false;
     }
@@ -217,36 +256,54 @@ export class AdjustPointsDialog extends LitElement {
   protected render() {
     return html`
       <button class="open-button" @click=${this._openDialog}>
-        Adjust Points
+        Add Task
       </button>
 
       ${this._open
         ? html`
             <div class="dialog-overlay" @click=${this._handleOverlayClick}>
               <div class="dialog" @click=${(e: Event) => e.stopPropagation()}>
-                <h3 class="dialog-title">Adjust Points</h3>
+                <h3 class="dialog-title">Add Task</h3>
 
                 <div class="field">
-                  <label for="amount">Amount (non-zero integer)</label>
+                  <label for="task-type">Task Type</label>
+                  <select
+                    id="task-type"
+                    .value=${this._taskType}
+                    @change=${this._onTaskTypeChange}
+                  >
+                    <option value="base">Base</option>
+                    <option value="bonus">Bonus</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="task-name">Task Name</label>
                   <input
-                    id="amount"
-                    type="number"
-                    step="1"
-                    placeholder="e.g. -5 or 10"
-                    .value=${this._amount}
-                    @input=${this._onAmountInput}
+                    id="task-name"
+                    type="text"
+                    placeholder="e.g. Make bed"
+                    .value=${this._name}
+                    @input=${this._onNameInput}
                   />
                 </div>
 
-                <div class="field">
-                  <label for="reason">Reason</label>
-                  <textarea
-                    id="reason"
-                    placeholder="e.g. Left dishes out"
-                    .value=${this._reason}
-                    @input=${this._onReasonInput}
-                  ></textarea>
-                </div>
+                ${this._taskType === "bonus"
+                  ? html`
+                      <div class="field">
+                        <label for="points-value">Points Value</label>
+                        <input
+                          id="points-value"
+                          type="number"
+                          step="1"
+                          min="1"
+                          placeholder="e.g. 10"
+                          .value=${this._pointsValue}
+                          @input=${this._onPointsValueInput}
+                        />
+                      </div>
+                    `
+                  : nothing}
 
                 ${this._error
                   ? html`<p class="error-message">${this._error}</p>`
