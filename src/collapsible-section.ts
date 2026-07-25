@@ -55,8 +55,8 @@ export class PointsBotCollapsibleSection extends LitElement {
        font-size: 24px;
       cursor: pointer;
       user-select: none;
-       background-color: #b29fe8;
-       color: #17151d;
+       background-color: var(--pointsbot-accent-color);
+       color: var(--pointsbot-accent-text-color);
       transition: filter 0.2s ease;
     }
 
@@ -70,7 +70,7 @@ export class PointsBotCollapsibleSection extends LitElement {
 
     .section-header-label {
       flex: 1;
-       color: #17151d;
+       color: var(--pointsbot-accent-text-color);
     }
 
     .section-header-chevron {
@@ -80,7 +80,7 @@ export class PointsBotCollapsibleSection extends LitElement {
       align-items: center;
       justify-content: center;
       transition: transform 0.3s ease;
-       color: #17151d;
+       color: var(--pointsbot-accent-text-color);
     }
 
     .section-header-chevron.open {

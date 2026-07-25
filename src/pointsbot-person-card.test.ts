@@ -372,6 +372,85 @@ describe("PointsBotPersonCard", () => {
     });
   });
 
+  describe("bonus row — points-badge pill", () => {
+    it("renders a .points-badge pill with '+' prefix, points_value, and star icon for an enabled bonus task", async () => {
+      const el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+
+      el.setConfig({
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      });
+      el.hass = makeHass("sensor.pointsbot_alice", "340", {
+        ...DEFAULT_ATTRS,
+        bonus_tasks: [
+          {
+            id: "bonus-uuid-pill",
+            name: "Vacuum living room",
+            points_value: 5,
+            enabled: true,
+            completions_this_week: 0,
+          },
+        ],
+      });
+      await el.updateComplete;
+
+      const pill = el.shadowRoot?.querySelector(
+        ".bonus-row .points-badge"
+      ) as HTMLElement | null;
+      expect(pill).not.toBeNull();
+      // "+5" should be the first text content of the pill
+      expect(pill?.textContent?.trim().startsWith("+5")).toBe(true);
+      // The pill should contain the configured icon (mdi:star-circle)
+      const icon = pill?.querySelector("ha-icon");
+      expect(icon).not.toBeNull();
+      expect(icon?.getAttribute("icon")).toBe("mdi:star-circle");
+
+      document.body.removeChild(el);
+    });
+
+    it("does not render a '· disabled' text label for disabled bonus tasks", async () => {
+      const el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+
+      el.setConfig({
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      });
+      el.hass = makeHass("sensor.pointsbot_alice", "340", {
+        ...DEFAULT_ATTRS,
+        bonus_tasks: [
+          {
+            id: "bonus-uuid-disabled",
+            name: "Clean bathroom",
+            points_value: 15,
+            enabled: false,
+            completions_this_week: 0,
+          },
+        ],
+      });
+      await el.updateComplete;
+
+      const text = el.shadowRoot?.textContent ?? "";
+      // The task name is rendered; the pill is rendered; but no "· disabled"
+      // suffix should appear in the row's text.
+      expect(text).toContain("Clean bathroom");
+      expect(text).toContain("+15");
+      expect(text).not.toMatch(/·\s*disabled/);
+      // The disabled state is still communicated via the row's class
+      const disabledRow = el.shadowRoot?.querySelector(
+        ".bonus-row.disabled"
+      );
+      expect(disabledRow).not.toBeNull();
+
+      document.body.removeChild(el);
+    });
+  });
+
   describe("render — live hass updates", () => {
     it("re-renders when hass is updated with new state", async () => {
       const el = document.createElement(

@@ -1,4 +1,4 @@
-import { LitElement, html, css, nothing, unsafeCSS } from "lit";
+import { LitElement, html, css, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import type { CardConfig, PointsBotEntityAttributes } from "./types.js";
 
@@ -7,7 +7,21 @@ import "./collapsible-section.js";
 import "./adjust-points-dialog.js";
 import "./add-task-dialog.js";
 
+/**
+ * Default accent color used when `CardConfig.accent_color` is unset or invalid.
+ * This is a fallback only — the active accent color is propagated at runtime
+ * via the `--pointsbot-accent-color` CSS custom property (see `render()`).
+ */
 const ACCENT_COLOR = "#B29FE8";
+
+/**
+ * Default text color drawn on top of the accent background, used when the
+ * configured accent color resolves to a dark (low-luminance) tone. When the
+ * accent is light, the dynamic helper flips this to dark text. See
+ * `_computeContrastTextColor`.
+ */
+const ACCENT_TEXT_DARK = "#17151d";
+const ACCENT_TEXT_LIGHT = "#ffffff";
 
 /**
  * Minimal HomeAssistant interface — only the surface area consumed by this
@@ -89,14 +103,14 @@ export class PointsBotPersonCard extends LitElement {
       height: 64px;
       border-radius: 50%;
       object-fit: cover;
-      background-color: ${unsafeCSS(ACCENT_COLOR)};
+      background-color: var(--pointsbot-accent-color);
     }
 
     .avatar-placeholder {
       width: 64px;
       height: 64px;
       border-radius: 50%;
-      background-color: ${unsafeCSS(ACCENT_COLOR)};
+      background-color: var(--pointsbot-accent-color);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -150,7 +164,7 @@ export class PointsBotPersonCard extends LitElement {
     }
 
     .weekly-points {
-      color: ${unsafeCSS(ACCENT_COLOR)};
+      color: var(--pointsbot-accent-color);
       font-size: 24px;
       font-weight: bold;
       white-space: nowrap;
@@ -183,7 +197,7 @@ export class PointsBotPersonCard extends LitElement {
       margin-left: auto;
       order: 2;
       cursor: pointer;
-      accent-color: ${unsafeCSS(ACCENT_COLOR)};
+      accent-color: var(--pointsbot-accent-color);
       flex-shrink: 0;
     }
 
@@ -201,11 +215,25 @@ export class PointsBotPersonCard extends LitElement {
       color: var(--secondary-text-color, #727272);
     }
 
-    .bonus-row .section-item-subtitle ha-icon {
-      --mdc-icon-size: 18px;
+    /* ---------- Bonus tasks ---------- */
+
+    .points-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      white-space: nowrap;
+      background: var(--pointsbot-accent-color);
+      color: var(--pointsbot-accent-text-color);
     }
 
-    /* ---------- Bonus tasks ---------- */
+    .points-badge ha-icon {
+      --mdc-icon-size: 14px;
+      display: flex;
+    }
 
     .bonus-row.disabled {
       opacity: 0.45;
@@ -239,9 +267,9 @@ export class PointsBotPersonCard extends LitElement {
       align-items: center;
       justify-content: center;
       border-radius: 50%;
-      border: 2px solid ${unsafeCSS(ACCENT_COLOR)};
+      border: 2px solid var(--pointsbot-accent-color);
       background: transparent;
-      color: ${unsafeCSS(ACCENT_COLOR)};
+      color: var(--pointsbot-accent-color);
       line-height: 1;
       cursor: pointer;
       flex-shrink: 0;
@@ -261,14 +289,14 @@ export class PointsBotPersonCard extends LitElement {
     .circle-button:hover:not(:disabled) {
       background: color-mix(
         in srgb,
-        ${unsafeCSS(ACCENT_COLOR)} 15%,
+        var(--pointsbot-accent-color) 15%,
         transparent
       );
     }
 
     .circle-button.completed {
-      background: ${unsafeCSS(ACCENT_COLOR)};
-      color: #17151d;
+      background: var(--pointsbot-accent-color);
+      color: var(--pointsbot-accent-text-color);
     }
 
     .circle-button:disabled {
@@ -292,7 +320,7 @@ export class PointsBotPersonCard extends LitElement {
       order: 2;
       cursor: default;
       border: none;
-      color: #17151d;
+      color: var(--pointsbot-accent-text-color);
       white-space: nowrap;
       border-radius: 24px;
     }
@@ -341,8 +369,8 @@ export class PointsBotPersonCard extends LitElement {
   }
 
   /**
-   * Returns the visual config editor element for the HA card editor panel.
-   * HA calls this method when the user opens the card's visual editor.
+   * Returns the declarative schema used by HA's form-based editor and the YAML
+   * config form.
    */
   static getConfigForm() {
     return {
@@ -354,6 +382,14 @@ export class PointsBotPersonCard extends LitElement {
             entity: {
               filter: { domain: "sensor", integration: "pointsbot" },
             },
+          },
+        },
+        {
+          name: "accent_color",
+          default: ACCENT_COLOR,
+          helper: "Hex color code (e.g. #B29FE8) or CSS variable (e.g. var(--primary-color))",
+          selector: {
+            text: {},
           },
         },
       ],
@@ -368,7 +404,61 @@ export class PointsBotPersonCard extends LitElement {
     return {
       type: "custom:pointsbot-person-card",
       entity: "",
+      accent_color: ACCENT_COLOR,
     };
+  }
+
+  // -----------------------------------------------------------------
+  // Accent color helpers
+  // -----------------------------------------------------------------
+
+  /**
+   * Resolves the configured accent color, falling back to the default
+   * `ACCENT_COLOR` if the value is missing or not a valid `#RRGGBB` string.
+   * Validation prevents arbitrary CSS from being injected via the custom
+   * property value.
+   */
+  private _resolveAccentColor(): string {
+    const configured = this._config?.accent_color;
+    if (configured && /^#[0-9A-Fa-f]{6}$/.test(configured)) {
+      return configured;
+    }
+    return ACCENT_COLOR;
+  }
+
+  /**
+   * Computes a high-contrast text color for use on top of the accent
+   * background, using the WCAG contrast-ratio formula. Compares the
+   * accent color against both dark and light text options and picks
+   * whichever yields the higher contrast ratio.
+   * See: https://www.w3.org/TR/WCAG20/#relativeluminancedef
+   */
+  private _computeContrastTextColor(hex: string): string {
+    const accentLum = this._relativeLuminance(hex);
+    const darkLum = this._relativeLuminance(ACCENT_TEXT_DARK);
+    const lightLum = this._relativeLuminance(ACCENT_TEXT_LIGHT);
+
+    const darkRatio =
+      (Math.max(accentLum, darkLum) + 0.05) /
+      (Math.min(accentLum, darkLum) + 0.05);
+    const lightRatio =
+      (Math.max(accentLum, lightLum) + 0.05) /
+      (Math.min(accentLum, lightLum) + 0.05);
+
+    return darkRatio >= lightRatio ? ACCENT_TEXT_DARK : ACCENT_TEXT_LIGHT;
+  }
+
+  /** WCAG relative luminance for a #RRGGBB hex color. */
+  private _relativeLuminance(hex: string): number {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+    const [rL, gL, bL] = [r, g, b].map((c) =>
+      c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4),
+    );
+
+    return 0.2126 * rL + 0.7152 * gL + 0.0722 * bL;
   }
 
   // -----------------------------------------------------------------
@@ -463,10 +553,15 @@ export class PointsBotPersonCard extends LitElement {
     const baseTasks = attrs.base_tasks ?? [];
     const bonusTasks = attrs.bonus_tasks ?? [];
     const adjustments = attrs.weekly_adjustments ?? [];
+    const accentColor = this._resolveAccentColor();
+    const accentTextColor = this._computeContrastTextColor(accentColor);
 
     return html`
       <ha-card>
-        <div class="card">
+        <div
+          class="card"
+          style="--pointsbot-accent-color: ${accentColor}; --pointsbot-accent-text-color: ${accentTextColor};"
+        >
           <div class="header">
             ${picture
               ? html`<img class="avatar" src="${picture}" alt="${name}" />`
@@ -518,12 +613,14 @@ export class PointsBotPersonCard extends LitElement {
                         ? ""
                         : "disabled"}"
                     >
-                      ${this._renderSectionItemInfo(
-                        task.name,
-                        html`${task.points_value}
-                          <ha-icon icon="${icon}"></ha-icon>
-                          ${task.enabled ? "" : " · disabled"}`,
-                      )}
+                      <div class="section-item-info">
+                        <div class="section-item-title">${task.name}</div>
+                        <span class="points-badge"
+                          >+${task.points_value}<ha-icon
+                            icon="${icon}"
+                          ></ha-icon
+                        ></span>
+                      </div>
                       <div class="bonus-actions">
                         <button
                           class="circle-button"

@@ -42,4 +42,5 @@ export interface PointsBotEntityAttributes {
 export interface CardConfig {
   type: "custom:pointsbot-person-card";
   entity: string; // sensor.pointsbot_<slug>
+  accent_color?: string; // #RRGGBB hex color, defaults to "#B29FE8"
 }

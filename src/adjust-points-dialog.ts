@@ -41,8 +41,8 @@ export class AdjustPointsDialog extends LitElement {
       cursor: pointer;
       border-radius: var(--ha-card-border-radius, 8px);
       border: none;
-      background: #b29fe8;
-      color: #17151d;
+      background: var(--pointsbot-accent-color);
+      color: var(--pointsbot-accent-text-color);
       font-size: 18px;
       font-weight: 500;
       padding: 16px 32px;
