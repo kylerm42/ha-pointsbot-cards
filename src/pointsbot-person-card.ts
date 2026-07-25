@@ -1,6 +1,11 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import type { CardConfig, PointsBotEntityAttributes } from "./types.js";
+import { extractColorVariants } from "./utils/color-utils.js";
+import {
+  playCompletionBurst,
+  playPointsAnimation,
+} from "./utils/confetti-utils.js";
 
 // Side-effect imports so the custom elements are registered when the card loads.
 import "./collapsible-section.js";
@@ -465,18 +470,73 @@ export class PointsBotPersonCard extends LitElement {
   // Service call helpers
   // -----------------------------------------------------------------
 
-  private _toggleBaseTask(personId: string, taskId: string) {
-    this._hass?.callService("pointsbot", "toggle_base_task", {
-      person_id: personId,
-      task_id: taskId,
-    });
+  /**
+   * Toggles a base task's `done` state.
+   *
+   * `origin` is pre-normalized (x/y in [0, 1]) to viewport-fraction
+   * coordinates — the click handler computes both pixel and normalized
+   * origins synchronously before this async method runs, so a viewport
+   * resize during the await cannot shift the burst origin.
+   */
+  private async _toggleBaseTask(
+    personId: string,
+    taskId: string,
+    origin: { x: number; y: number },
+    wasDone: boolean,
+    colors: string[],
+  ): Promise<void> {
+    if (!this._hass) {
+      return;
+    }
+
+    try {
+      await this._hass.callService("pointsbot", "toggle_base_task", {
+        person_id: personId,
+        task_id: taskId,
+      });
+
+      if (!wasDone) {
+        playCompletionBurst(origin, colors);
+      }
+    } catch {
+      // Service errors are surfaced by HA's notification system;
+      // swallow here to prevent unhandled promise rejections.
+    }
   }
 
-  private _completeBonusTask(personId: string, taskId: string) {
-    this._hass?.callService("pointsbot", "complete_bonus_task", {
-      person_id: personId,
-      task_id: taskId,
-    });
+  /**
+   * Completes a bonus task and fires both confetti effects.
+   *
+   * `normalizedOrigin` is consumed by `playCompletionBurst` (canvas-confetti
+   * expects [0, 1] fractions); `pixelOrigin` is consumed by
+   * `playPointsAnimation`, which positions a DOM element using pixel
+   * coordinates. Both are captured synchronously in the click handler
+   * before the await, so a viewport resize during the service call cannot
+   * misalign either effect.
+   */
+  private async _completeBonusTask(
+    personId: string,
+    taskId: string,
+    pixelOrigin: { x: number; y: number },
+    normalizedOrigin: { x: number; y: number },
+    pointsValue: number,
+    colors: string[],
+  ): Promise<void> {
+    if (!this._hass) {
+      return;
+    }
+
+    try {
+      await this._hass.callService("pointsbot", "complete_bonus_task", {
+        person_id: personId,
+        task_id: taskId,
+      });
+      playCompletionBurst(normalizedOrigin, colors);
+      playPointsAnimation(pixelOrigin, pointsValue);
+    } catch {
+      // Service errors are surfaced by HA's notification system;
+      // swallow here to prevent unhandled promise rejections.
+    }
   }
 
   private _uncompleteBonusTask(personId: string, taskId: string) {
@@ -555,6 +615,7 @@ export class PointsBotPersonCard extends LitElement {
     const adjustments = attrs.weekly_adjustments ?? [];
     const accentColor = this._resolveAccentColor();
     const accentTextColor = this._computeContrastTextColor(accentColor);
+    const colors = extractColorVariants(accentColor);
 
     return html`
       <ha-card>
@@ -593,7 +654,31 @@ export class PointsBotPersonCard extends LitElement {
                         aria-label="${task.done
                           ? "Uncomplete"
                           : "Complete"} ${task.name}"
-                        @click=${() => this._toggleBaseTask(personId, task.id)}
+                        @click=${(event: MouseEvent) => {
+                          // Capture pixel + normalized origin synchronously
+                          // before the async handler awaits callService. If
+                          // we deferred normalization until after the await,
+                          // a viewport resize mid-flight could produce a
+                          // misaligned confetti burst origin.
+                          const rect = (
+                            event.currentTarget as HTMLButtonElement
+                          ).getBoundingClientRect();
+                          const pixelOrigin = {
+                            x: rect.left + rect.width / 2,
+                            y: rect.top + rect.height / 2,
+                          };
+                          const normalizedOrigin = {
+                            x: pixelOrigin.x / window.innerWidth,
+                            y: pixelOrigin.y / window.innerHeight,
+                          };
+                          void this._toggleBaseTask(
+                            personId,
+                            task.id,
+                            normalizedOrigin,
+                            task.done,
+                            colors,
+                          );
+                        }}
                       >
                         <ha-icon icon="mdi:check"></ha-icon>
                       </button>
@@ -639,8 +724,34 @@ export class PointsBotPersonCard extends LitElement {
                           class="circle-button"
                           ?disabled=${!task.enabled}
                           aria-label="Complete ${task.name}"
-                          @click=${() =>
-                            this._completeBonusTask(personId, task.id)}
+                          @click=${(event: MouseEvent) => {
+                            // Capture both pixel and normalized origins
+                            // synchronously before the async handler awaits
+                            // callService. playPointsAnimation needs pixel
+                            // coordinates (DOM positioning); playCompletionBurst
+                            // needs [0, 1] viewport fractions. Computing
+                            // both here keeps the confetti aligned even if
+                            // the viewport resizes during the await.
+                            const rect = (
+                              event.currentTarget as HTMLButtonElement
+                            ).getBoundingClientRect();
+                            const pixelOrigin = {
+                              x: rect.left + rect.width / 2,
+                              y: rect.top + rect.height / 2,
+                            };
+                            const normalizedOrigin = {
+                              x: pixelOrigin.x / window.innerWidth,
+                              y: pixelOrigin.y / window.innerHeight,
+                            };
+                            void this._completeBonusTask(
+                              personId,
+                              task.id,
+                              pixelOrigin,
+                              normalizedOrigin,
+                              task.points_value,
+                              colors,
+                            );
+                          }}
                         >
                           +
                         </button>
@@ -681,6 +792,7 @@ export class PointsBotPersonCard extends LitElement {
             <pointsbot-adjust-points-dialog
               .hass=${hass}
               .personId=${personId}
+              .confettiColors=${colors}
             ></pointsbot-adjust-points-dialog>
           </div>
         </div>

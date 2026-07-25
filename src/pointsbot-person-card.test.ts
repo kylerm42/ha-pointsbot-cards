@@ -17,6 +17,33 @@ import "./pointsbot-person-card.js";
 import type { PointsBotPersonCard } from "./pointsbot-person-card.js";
 import type { AddTaskDialog } from "./add-task-dialog.js";
 import type { AdjustPointsDialog } from "./adjust-points-dialog.js";
+import * as confettiUtils from "./utils/confetti-utils.js";
+
+// ---------------------------------------------------------------------------
+// Confetti mocks
+// ---------------------------------------------------------------------------
+//
+// The card delegates confetti effects to the playCompletionBurst /
+// playPointsAnimation helpers in `./utils/confetti-utils.js`. We mock the
+// module at the test-file level so that interaction tests can assert
+// *behavior* (which effect fires, with which arguments, after which user
+// gesture) without actually rendering canvas effects. Note that the
+// module-level canvas-confetti mock in `test-setup.ts` is still required
+// for any code path that resolves the real confetti helper; this mock
+// short-circuits before that code runs.
+// ---------------------------------------------------------------------------
+
+vi.mock("./utils/confetti-utils.js", () => ({
+  playCompletionBurst: vi.fn(),
+  playPointsAnimation: vi.fn(),
+  playStarShower: vi.fn(),
+}));
+
+const mockPlayCompletionBurst = vi.mocked(
+  confettiUtils.playCompletionBurst,
+);
+const mockPlayPointsAnimation = vi.mocked(confettiUtils.playPointsAnimation);
+const mockPlayStarShower = vi.mocked(confettiUtils.playStarShower);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -34,7 +61,7 @@ function makeHass(
         attributes: attrs,
       },
     },
-    callService: vi.fn(),
+    callService: vi.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -52,6 +79,15 @@ const DEFAULT_ATTRS = {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
+
+// Reset confetti mocks between tests so call counts and arguments are
+// scoped per-test. (Module-level vi.fn() mocks otherwise accumulate state
+// across the whole file, leaking call history into later tests.)
+beforeEach(() => {
+  mockPlayCompletionBurst.mockClear();
+  mockPlayPointsAnimation.mockClear();
+  mockPlayStarShower.mockClear();
+});
 
 describe("PointsBotPersonCard", () => {
   describe("window.customCards registration", () => {
@@ -125,7 +161,7 @@ describe("PointsBotPersonCard", () => {
       });
       el.hass = {
         states: {},
-        callService: vi.fn(),
+        callService: vi.fn().mockResolvedValue(undefined),
       };
 
       await el.updateComplete;
@@ -612,6 +648,233 @@ describe("PointsBotPersonCard", () => {
       expect(adjustCall).toBeDefined();
       expect(addTaskCall![2]).toMatchObject({ person_id: "person.alice" });
       expect(adjustCall![2]).toMatchObject({ person_id: "person.alice" });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Confetti trigger / suppression behavior
+  // -------------------------------------------------------------------------
+  //
+  // These tests pin down *behavioral* contracts that would otherwise only
+  // be verifiable by code inspection: which user gestures fire which
+  // confetti effects, and whether a failed service call suppresses them.
+  // The confetti-utils module is mocked at the top of this file so these
+  // tests can assert call counts and arguments directly.
+  // -------------------------------------------------------------------------
+
+  describe("confetti triggers — bonus tasks", () => {
+    let el: PointsBotPersonCard;
+    let hass: ReturnType<typeof makeHass>;
+
+    // Some assertions in this block make `callService` return a rejected
+    // promise. The card's async handlers now catch these, so no
+    // unhandledRejection suppression is needed.
+    beforeEach(async () => {
+      el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+      el.setConfig({
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      });
+      hass = makeHass("sensor.pointsbot_alice", "340", {
+        ...DEFAULT_ATTRS,
+        bonus_tasks: [
+          {
+            id: "bonus-uuid-1",
+            name: "Vacuum living room",
+            points_value: 10,
+            enabled: true,
+            completions_this_week: 0,
+          },
+        ],
+      });
+      el.hass = hass;
+      await el.updateComplete;
+    });
+
+    afterEach(() => {
+      document.body.removeChild(el);
+    });
+
+    it("fires both playCompletionBurst and playPointsAnimation after a successful complete_bonus_task service call", async () => {
+      const completeBtn = el.shadowRoot?.querySelector(
+        ".bonus-actions .circle-button:last-of-type"
+      ) as HTMLButtonElement | null;
+      expect(completeBtn).not.toBeNull();
+
+      completeBtn!.click();
+      await el.updateComplete;
+      // Flush microtasks so the awaited callService resolves and the
+      // post-await confetti calls execute before we assert.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(hass.callService).toHaveBeenCalledWith(
+        "pointsbot",
+        "complete_bonus_task",
+        { person_id: "person.alice", task_id: "bonus-uuid-1" }
+      );
+      expect(mockPlayCompletionBurst).toHaveBeenCalledOnce();
+      // playPointsAnimation receives the pixel origin (x, y in CSS px)
+      // and the points_value, both captured synchronously in the click
+      // handler before the await.
+      expect(mockPlayPointsAnimation).toHaveBeenCalledOnce();
+      expect(mockPlayPointsAnimation).toHaveBeenCalledWith(
+        { x: expect.any(Number), y: expect.any(Number) },
+        10,
+      );
+      expect(mockPlayStarShower).not.toHaveBeenCalled();
+    });
+
+    it("does NOT fire any confetti function when uncompleting a bonus task (the '−' button)", async () => {
+      // The uncomplete button is disabled when completions_this_week is 0,
+      // so bump it to a non-zero count to enable the gesture under test.
+      hass.states["sensor.pointsbot_alice"].attributes = {
+        ...hass.states["sensor.pointsbot_alice"].attributes as object,
+        bonus_tasks: [
+          {
+            id: "bonus-uuid-1",
+            name: "Vacuum living room",
+            points_value: 10,
+            enabled: true,
+            completions_this_week: 1,
+          },
+        ],
+      };
+      el.hass = hass;
+      await el.updateComplete;
+
+      const uncompleteBtn = el.shadowRoot?.querySelector(
+        ".bonus-actions .circle-button:first-of-type"
+      ) as HTMLButtonElement | null;
+      expect(uncompleteBtn).not.toBeNull();
+      expect(uncompleteBtn!.disabled).toBe(false);
+
+      uncompleteBtn!.click();
+      await el.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(hass.callService).toHaveBeenCalledWith(
+        "pointsbot",
+        "uncomplete_bonus_task",
+        { person_id: "person.alice", task_id: "bonus-uuid-1" }
+      );
+      expect(mockPlayCompletionBurst).not.toHaveBeenCalled();
+      expect(mockPlayPointsAnimation).not.toHaveBeenCalled();
+    });
+
+    it("does NOT fire any confetti function when the complete_bonus_task service call rejects", async () => {
+      hass.callService.mockRejectedValueOnce(new Error("backend rejected"));
+
+      const completeBtn = el.shadowRoot?.querySelector(
+        ".bonus-actions .circle-button:last-of-type"
+      ) as HTMLButtonElement | null;
+      completeBtn!.click();
+      await el.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // The card's async handler catches the rejection; no confetti fires.
+      expect(mockPlayCompletionBurst).not.toHaveBeenCalled();
+      expect(mockPlayPointsAnimation).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("confetti triggers — base tasks", () => {
+    let el: PointsBotPersonCard;
+    let hass: ReturnType<typeof makeHass>;
+
+    beforeEach(async () => {
+      el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+      el.setConfig({
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      });
+      hass = makeHass("sensor.pointsbot_alice", "340", {
+        ...DEFAULT_ATTRS,
+        base_tasks: [{ id: "task-uuid-1", name: "Make bed", done: false }],
+      });
+      el.hass = hass;
+      await el.updateComplete;
+    });
+
+    afterEach(() => {
+      document.body.removeChild(el);
+    });
+
+    it("fires playCompletionBurst (only) after toggling an incomplete base task", async () => {
+      const button = el.shadowRoot?.querySelector(
+        "button.circle-button"
+      ) as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+
+      button!.click();
+      await el.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(hass.callService).toHaveBeenCalledWith(
+        "pointsbot",
+        "toggle_base_task",
+        { person_id: "person.alice", task_id: "task-uuid-1" }
+      );
+      expect(mockPlayCompletionBurst).toHaveBeenCalledOnce();
+      // playCompletionBurst consumes the normalized origin — verify it's
+      // in [0, 1] viewport-fraction space (not raw pixels).
+      const burstArgs = mockPlayCompletionBurst.mock.calls[0][0];
+      expect(burstArgs.x).toBeGreaterThanOrEqual(0);
+      expect(burstArgs.x).toBeLessThanOrEqual(1);
+      expect(burstArgs.y).toBeGreaterThanOrEqual(0);
+      expect(burstArgs.y).toBeLessThanOrEqual(1);
+      expect(mockPlayPointsAnimation).not.toHaveBeenCalled();
+      expect(mockPlayStarShower).not.toHaveBeenCalled();
+    });
+
+    it("does NOT fire any confetti function when toggling a *completed* base task (wasDone=true)", async () => {
+      // Replace the hass with one carrying a completed task. Capture the
+      // new hass so we can assert on its callService mock (the button
+      // click goes through `this._hass.callService`, which is now the
+      // replacement).
+      const completedHass = makeHass("sensor.pointsbot_alice", "340", {
+        ...DEFAULT_ATTRS,
+        base_tasks: [{ id: "task-uuid-1", name: "Make bed", done: true }],
+      });
+      el.hass = completedHass;
+      await el.updateComplete;
+
+      const button = el.shadowRoot?.querySelector(
+        "button.circle-button"
+      ) as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+
+      button!.click();
+      await el.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(completedHass.callService).toHaveBeenCalledWith(
+        "pointsbot",
+        "toggle_base_task",
+        { person_id: "person.alice", task_id: "task-uuid-1" }
+      );
+      // No confetti for an "uncomplete" gesture on a base task.
+      expect(mockPlayCompletionBurst).not.toHaveBeenCalled();
+      expect(mockPlayPointsAnimation).not.toHaveBeenCalled();
+    });
+
+    it("does NOT fire any confetti function when the toggle_base_task service call rejects", async () => {
+      hass.callService.mockRejectedValueOnce(new Error("backend rejected"));
+
+      const button = el.shadowRoot?.querySelector(
+        "button.circle-button"
+      ) as HTMLButtonElement | null;
+      button!.click();
+      await el.updateComplete;
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockPlayCompletionBurst).not.toHaveBeenCalled();
+      expect(mockPlayPointsAnimation).not.toHaveBeenCalled();
     });
   });
 });

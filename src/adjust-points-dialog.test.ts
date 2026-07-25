@@ -7,6 +7,26 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import "./adjust-points-dialog.js";
 import type { AdjustPointsDialog } from "./adjust-points-dialog.js";
+import * as confettiUtils from "./utils/confetti-utils.js";
+
+// ---------------------------------------------------------------------------
+// Confetti mock
+// ---------------------------------------------------------------------------
+//
+// The dialog fires `playStarShower` from `./utils/confetti-utils.js` after a
+// successful `adjust_points` submission with a positive amount. We mock the
+// module at the test-file level so submission tests can assert whether the
+// effect fires (and with which duration) without rendering anything to the
+// (mocked) canvas.
+// ---------------------------------------------------------------------------
+
+vi.mock("./utils/confetti-utils.js", () => ({
+  playCompletionBurst: vi.fn(),
+  playPointsAnimation: vi.fn(),
+  playStarShower: vi.fn(),
+}));
+
+const mockPlayStarShower = vi.mocked(confettiUtils.playStarShower);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -84,6 +104,7 @@ describe("AdjustPointsDialog", () => {
 
   beforeEach(async () => {
     el = await makeDialog();
+    mockPlayStarShower.mockClear();
   });
 
   afterEach(() => cleanup(el));
@@ -245,6 +266,70 @@ describe("AdjustPointsDialog", () => {
 
       const call = mockHass.callService.mock.calls[0];
       expect(call[2].reason).toBe("nice work");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Confetti trigger / suppression behavior
+  // -------------------------------------------------------------------------
+  //
+  // These tests pin down the behavioral contract: a positive adjustment
+  // fires `playStarShower` with duration 2500 ms; a negative adjustment or
+  // a failed service call does not. The confetti-utils module is mocked
+  // at the top of this file so the assertions can check call counts and
+  // arguments directly.
+  // -------------------------------------------------------------------------
+
+  describe("confetti trigger — playStarShower", () => {
+    it("fires playStarShower(colors, 2500) after a successful positive adjustment", async () => {
+      el.confettiColors = ["#ff0000", "#00ff00", "#0000ff"];
+      const mockHass = makeMockHass();
+      el.hass = mockHass as never;
+      await openDialog(el);
+      await fillAndSubmit(el, "5", "Good job");
+      // Flush microtasks so the awaited callService resolves and the
+      // post-await playStarShower call executes before we assert.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockHass.callService).toHaveBeenCalledWith(
+        "pointsbot",
+        "adjust_points",
+        { person_id: "person.alice", amount: 5, reason: "Good job" }
+      );
+      expect(mockPlayStarShower).toHaveBeenCalledOnce();
+      expect(mockPlayStarShower).toHaveBeenCalledWith(
+        ["#ff0000", "#00ff00", "#0000ff"],
+        2500,
+      );
+    });
+
+    it("does NOT fire playStarShower when the submitted amount is negative", async () => {
+      el.confettiColors = ["#ff0000", "#00ff00"];
+      const mockHass = makeMockHass();
+      el.hass = mockHass as never;
+      await openDialog(el);
+      await fillAndSubmit(el, "-5", "Left dishes out");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockHass.callService).toHaveBeenCalledWith(
+        "pointsbot",
+        "adjust_points",
+        { person_id: "person.alice", amount: -5, reason: "Left dishes out" }
+      );
+      expect(mockPlayStarShower).not.toHaveBeenCalled();
+    });
+
+    it("does NOT fire playStarShower when the adjust_points service call rejects", async () => {
+      el.confettiColors = ["#ff0000"];
+      const mockHass = makeMockHass();
+      mockHass.callService.mockRejectedValueOnce(new Error("backend rejected"));
+      el.hass = mockHass as never;
+      await openDialog(el);
+      await fillAndSubmit(el, "5", "Good job");
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(mockHass.callService).toHaveBeenCalledOnce();
+      expect(mockPlayStarShower).not.toHaveBeenCalled();
     });
   });
 });

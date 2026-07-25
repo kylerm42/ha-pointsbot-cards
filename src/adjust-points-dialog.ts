@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { playStarShower } from "./utils/confetti-utils.js";
 
 interface HomeAssistant {
   callService: (
@@ -24,6 +25,8 @@ export class AdjustPointsDialog extends LitElement {
 
   /** The person_id attribute from the sensor entity (e.g. "person.alice"). */
   @property({ type: String }) personId = "";
+
+  @property({ type: Array }) confettiColors: string[] = [];
 
   @state() private _open = false;
   @state() private _amount = "";
@@ -206,6 +209,9 @@ export class AdjustPointsDialog extends LitElement {
         amount: amountNum,
         reason,
       });
+      if (amountNum > 0 && this.confettiColors.length > 0) {
+        playStarShower(this.confettiColors, 2500);
+      }
       this._open = false;
     } catch {
       this._error = "Service call failed. Please try again.";
