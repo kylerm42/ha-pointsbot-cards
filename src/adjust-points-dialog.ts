@@ -40,23 +40,79 @@ export class AdjustPointsDialog extends LitElement {
       width: 100%;
     }
 
-    .open-button {
+    .add-button {
+      border-radius: 12px;
+      background: var(--card-background-color);
+      border: 2px dashed transparent;
+      padding: 0;
+      display: flex;
+      flex-direction: row;
+      overflow: hidden;
       cursor: pointer;
-      border-radius: var(--ha-card-border-radius, 8px);
-      border: none;
-      background: var(--pointsbot-accent-color);
-      color: var(--pointsbot-accent-text-color);
-      font-size: 18px;
-      font-weight: 500;
-      padding: 16px 32px;
+      transition: all 0.2s ease;
+      min-height: 80px;
+      height: 80px;
       width: 100%;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
     }
 
-    .open-button:hover {
+    .add-button:hover {
+      border-color: var(--pointsbot-accent-color);
       transform: translateY(-2px);
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .add-button:active {
+      transform: translateY(0);
+      filter: brightness(0.95);
+    }
+
+    .button-icon-section {
+      flex-shrink: 0;
+      width: 80px;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .add-button:hover .button-icon-section {
+      background: color-mix(in srgb, var(--pointsbot-accent-color) 20%, var(--card-background-color));
+    }
+
+    .button-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--secondary-text-color);
+      transition: all 0.2s ease;
+    }
+
+    .add-button:hover .button-icon {
+      color: var(--pointsbot-accent-color);
+    }
+
+    .button-icon ha-icon {
+      --mdc-icon-size: 36px;
+    }
+
+    .button-info {
+      flex: 1;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .button-text {
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--secondary-text-color);
+      transition: all 0.2s ease;
+    }
+
+    .add-button:hover .button-text {
+      color: var(--pointsbot-accent-color);
     }
 
     .dialog-overlay {
@@ -222,8 +278,13 @@ export class AdjustPointsDialog extends LitElement {
 
   protected render() {
     return html`
-      <button class="open-button" @click=${this._openDialog}>
-        Adjust Points
+      <button class="add-button" @click=${this._openDialog}>
+        <span class="button-icon-section">
+          <span class="button-icon"><ha-icon icon="mdi:plus"></ha-icon></span>
+        </span>
+        <span class="button-info">
+          <span class="button-text">Adjust Points</span>
+        </span>
       </button>
 
       ${this._open

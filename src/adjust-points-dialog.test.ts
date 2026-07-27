@@ -58,7 +58,7 @@ function cleanup(el: HTMLElement) {
 /** Click the "Adjust Points" open button to show the dialog form. */
 async function openDialog(el: AdjustPointsDialog) {
   const openBtn = el.shadowRoot?.querySelector(
-    ".open-button"
+    ".add-button"
   ) as HTMLButtonElement;
   expect(openBtn).not.toBeNull();
   openBtn.click();
@@ -111,7 +111,7 @@ describe("AdjustPointsDialog", () => {
 
   describe("initial state", () => {
     it("renders the open button", () => {
-      const btn = el.shadowRoot?.querySelector(".open-button");
+      const btn = el.shadowRoot?.querySelector(".add-button");
       expect(btn).not.toBeNull();
       expect(btn?.textContent).toContain("Adjust Points");
     });

@@ -43,4 +43,11 @@ export interface CardConfig {
   type: "custom:pointsbot-person-card";
   entity: string; // sensor.pointsbot_<slug>
   accent_color?: string; // #RRGGBB hex color, defaults to "#B29FE8"
+  /**
+   * When true, the outer `ha-card` is rendered with no background,
+   * padding, box-shadow, or border so the card blends into the dashboard
+   * (matches ChoreBot's `person-points-card` "no background" look).
+   * Defaults to `false`, which leaves the standard HA card chrome in place.
+   */
+  hide_card_background?: boolean;
 }

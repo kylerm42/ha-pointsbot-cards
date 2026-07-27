@@ -148,6 +148,55 @@ describe("PointsBotPersonCard", () => {
     });
   });
 
+  describe("hide_card_background", () => {
+    async function renderCard(
+      hide_card_background?: boolean,
+    ): Promise<PointsBotPersonCard> {
+      const el = document.createElement(
+        "pointsbot-person-card",
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+
+      const config = {
+        type: "custom:pointsbot-person-card",
+        entity: "sensor.pointsbot_alice",
+      } as Partial<Parameters<PointsBotPersonCard["setConfig"]>[0]>;
+      if (hide_card_background !== undefined) {
+        (config as Record<string, unknown>).hide_card_background =
+          hide_card_background;
+      }
+      el.setConfig(config as Parameters<PointsBotPersonCard["setConfig"]>[0]);
+
+      el.hass = makeHass("sensor.pointsbot_alice", "340", DEFAULT_ATTRS);
+      await el.updateComplete;
+      return el;
+    }
+
+    it("does not add the .no-background class when hide_card_background is omitted", async () => {
+      const el = await renderCard();
+      const header = el.shadowRoot?.querySelector(".header");
+      expect(header).not.toBeNull();
+      expect(header!.classList.contains("no-background")).toBe(false);
+      document.body.removeChild(el);
+    });
+
+    it("does not add the .no-background class when hide_card_background is explicitly false", async () => {
+      const el = await renderCard(false);
+      const header = el.shadowRoot?.querySelector(".header");
+      expect(header).not.toBeNull();
+      expect(header!.classList.contains("no-background")).toBe(false);
+      document.body.removeChild(el);
+    });
+
+    it("adds the .no-background class when hide_card_background is true", async () => {
+      const el = await renderCard(true);
+      const header = el.shadowRoot?.querySelector(".header");
+      expect(header).not.toBeNull();
+      expect(header!.classList.contains("no-background")).toBe(true);
+      document.body.removeChild(el);
+    });
+  });
+
   describe("render — missing entity", () => {
     it("shows an error message when entity is not in hass.states", async () => {
       const el = document.createElement(
@@ -595,7 +644,7 @@ describe("PointsBotPersonCard", () => {
 
       // Trigger a successful Add Task submission from the embedded dialog.
       const addTaskOpen = addTask.shadowRoot?.querySelector(
-        ".open-button"
+        ".add-button"
       ) as HTMLButtonElement;
       addTaskOpen.click();
       await addTask.updateComplete;
@@ -614,7 +663,7 @@ describe("PointsBotPersonCard", () => {
 
       // Trigger a successful Adjust Points submission from the embedded dialog.
       const adjustOpen = adjustPoints.shadowRoot?.querySelector(
-        ".open-button"
+        ".add-button"
       ) as HTMLButtonElement;
       adjustOpen.click();
       await adjustPoints.updateComplete;
@@ -648,6 +697,43 @@ describe("PointsBotPersonCard", () => {
       expect(adjustCall).toBeDefined();
       expect(addTaskCall![2]).toMatchObject({ person_id: "person.alice" });
       expect(adjustCall![2]).toMatchObject({ person_id: "person.alice" });
+    });
+
+    it("renders both .add-button elements with an mdi:plus ha-icon in a separate icon section", async () => {
+      const addTask = el.shadowRoot?.querySelector(
+        "pointsbot-add-task-dialog"
+      ) as AddTaskDialog;
+      const adjustPoints = el.shadowRoot?.querySelector(
+        "pointsbot-adjust-points-dialog"
+      ) as AdjustPointsDialog;
+      expect(addTask).not.toBeNull();
+      expect(adjustPoints).not.toBeNull();
+
+      const addButton = addTask.shadowRoot?.querySelector(
+        ".add-button",
+      ) as HTMLElement | null;
+      const adjustButton = adjustPoints.shadowRoot?.querySelector(
+        ".add-button",
+      ) as HTMLElement | null;
+      expect(addButton).not.toBeNull();
+      expect(adjustButton).not.toBeNull();
+
+      for (const [button, expectedText] of [
+        [addButton, "Add Task"] as const,
+        [adjustButton, "Adjust Points"] as const,
+      ]) {
+        // The icon section is the first child, containing the ha-icon.
+        const iconSection = button!.querySelector(".button-icon-section");
+        expect(iconSection).not.toBeNull();
+        const icon = iconSection!.querySelector("ha-icon");
+        expect(icon).not.toBeNull();
+        expect(icon!.getAttribute("icon")).toBe("mdi:plus");
+
+        // The text area is the last child.
+        const textArea = button!.querySelector(".button-info");
+        expect(textArea).not.toBeNull();
+        expect(textArea!.textContent?.trim()).toBe(expectedText);
+      }
     });
   });
 

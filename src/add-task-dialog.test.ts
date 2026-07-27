@@ -38,7 +38,7 @@ function cleanup(el: HTMLElement) {
 /** Click the "Add Task" open button to show the dialog form. */
 async function openDialog(el: AddTaskDialog) {
   const openBtn = el.shadowRoot?.querySelector(
-    ".open-button"
+    ".add-button"
   ) as HTMLButtonElement;
   expect(openBtn).not.toBeNull();
   openBtn.click();
@@ -109,7 +109,7 @@ describe("AddTaskDialog", () => {
 
   describe("initial state", () => {
     it("renders the open button with text 'Add Task'", () => {
-      const btn = el.shadowRoot?.querySelector(".open-button");
+      const btn = el.shadowRoot?.querySelector(".add-button");
       expect(btn).not.toBeNull();
       expect(btn?.textContent).toContain("Add Task");
     });

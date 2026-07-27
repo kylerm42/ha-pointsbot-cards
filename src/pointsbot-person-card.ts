@@ -100,7 +100,16 @@ export class PointsBotPersonCard extends LitElement {
       display: flex;
       align-items: center;
       gap: 12px;
+      padding: 16px;
+      background: var(--card-background-color, #fff);
+      border-radius: var(--ha-card-border-radius, 12px);
       margin-bottom: 12px;
+    }
+
+    .header.no-background {
+      padding: 0;
+      background: transparent;
+      margin-bottom: 0;
     }
 
     .avatar {
@@ -366,7 +375,10 @@ export class PointsBotPersonCard extends LitElement {
     if (!config.entity) {
       throw new Error("PointsBot card: 'entity' is required in card config.");
     }
-    this._config = config as CardConfig;
+    this._config = {
+      ...(config as CardConfig),
+      hide_card_background: config.hide_card_background === true,
+    };
   }
 
   getCardSize(): number {
@@ -397,6 +409,15 @@ export class PointsBotPersonCard extends LitElement {
             text: {},
           },
         },
+        {
+          name: "hide_card_background",
+          default: false,
+          helper:
+            "Render the card without a background, padding, box-shadow, or border so it blends into the dashboard.",
+          selector: {
+            boolean: {},
+          },
+        },
       ],
     };
   }
@@ -410,6 +431,7 @@ export class PointsBotPersonCard extends LitElement {
       type: "custom:pointsbot-person-card",
       entity: "",
       accent_color: ACCENT_COLOR,
+      hide_card_background: false,
     };
   }
 
@@ -581,6 +603,7 @@ export class PointsBotPersonCard extends LitElement {
 
     const entityId = this._config.entity;
     const stateObj = hass.states[entityId];
+    const headerClass = this._config.hide_card_background ? "header no-background" : "header";
 
     if (!stateObj) {
       return html`
@@ -623,7 +646,7 @@ export class PointsBotPersonCard extends LitElement {
           class="card"
           style="--pointsbot-accent-color: ${accentColor}; --pointsbot-accent-text-color: ${accentTextColor};"
         >
-          <div class="header">
+          <div class="${headerClass}">
             ${picture
               ? html`<img class="avatar" src="${picture}" alt="${name}" />`
               : html`<div class="avatar-placeholder">👤</div>`}
