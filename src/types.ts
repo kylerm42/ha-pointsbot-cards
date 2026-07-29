@@ -50,4 +50,11 @@ export interface CardConfig {
    * Defaults to `false`, which leaves the standard HA card chrome in place.
    */
   hide_card_background?: boolean;
+  /**
+   * Optional entity whose `state` is rendered (no label) on the left side
+   * of the second header row — the position the Total occupied before it
+   * moved to the right. When unset, missing, or `unavailable`/`unknown`,
+   * nothing is rendered in that slot.
+   */
+  secondary_value_entity?: string;
 }

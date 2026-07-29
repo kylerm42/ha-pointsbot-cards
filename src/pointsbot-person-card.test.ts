@@ -337,6 +337,93 @@ describe("PointsBotPersonCard", () => {
     });
   });
 
+  describe("render — secondary_value_entity", () => {
+    let el: PointsBotPersonCard;
+
+    beforeEach(() => {
+      el = document.createElement(
+        "pointsbot-person-card"
+      ) as PointsBotPersonCard;
+      document.body.appendChild(el);
+    });
+
+    afterEach(() => {
+      document.body.removeChild(el);
+    });
+
+    const baseConfig = {
+      type: "custom:pointsbot-person-card",
+      entity: "sensor.pointsbot_alice",
+    } as const;
+
+    it("renders nothing in the extra slot when secondary_value_entity is unset", async () => {
+      el.setConfig({ ...baseConfig });
+      el.hass = makeHass("sensor.pointsbot_alice", "340", DEFAULT_ATTRS);
+      await el.updateComplete;
+
+      expect(el.shadowRoot?.querySelector(".points-extra")).toBeNull();
+    });
+
+    it("renders the configured entity's state in the extra slot", async () => {
+      el.setConfig({
+        ...baseConfig,
+        secondary_value_entity: "sensor.streak",
+      });
+      el.hass = {
+        states: {
+          "sensor.pointsbot_alice": {
+            state: "340",
+            attributes: DEFAULT_ATTRS,
+          },
+          "sensor.streak": {
+            state: "7",
+            attributes: {},
+          },
+        },
+        callService: vi.fn().mockResolvedValue(undefined),
+      };
+      await el.updateComplete;
+
+      const extra = el.shadowRoot?.querySelector(".points-extra");
+      expect(extra).not.toBeNull();
+      expect(extra?.textContent).toBe("7");
+    });
+
+    it("renders nothing when the configured entity is missing from hass", async () => {
+      el.setConfig({
+        ...baseConfig,
+        secondary_value_entity: "sensor.does_not_exist",
+      });
+      el.hass = makeHass("sensor.pointsbot_alice", "340", DEFAULT_ATTRS);
+      await el.updateComplete;
+
+      expect(el.shadowRoot?.querySelector(".points-extra")).toBeNull();
+    });
+
+    it("renders nothing when the configured entity state is unavailable", async () => {
+      el.setConfig({
+        ...baseConfig,
+        secondary_value_entity: "sensor.streak",
+      });
+      el.hass = {
+        states: {
+          "sensor.pointsbot_alice": {
+            state: "340",
+            attributes: DEFAULT_ATTRS,
+          },
+          "sensor.streak": {
+            state: "unavailable",
+            attributes: {},
+          },
+        },
+        callService: vi.fn().mockResolvedValue(undefined),
+      };
+      await el.updateComplete;
+
+      expect(el.shadowRoot?.querySelector(".points-extra")).toBeNull();
+    });
+  });
+
   describe("service calls — toggle_base_task", () => {
     it("calls hass.callService with correct arguments when a base task checkbox is clicked", async () => {
       const el = document.createElement(

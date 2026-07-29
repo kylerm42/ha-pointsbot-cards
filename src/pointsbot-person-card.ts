@@ -163,6 +163,20 @@ export class PointsBotPersonCard extends LitElement {
       gap: 8px;
     }
 
+    .points-block-right {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .points-extra {
+      font-size: 20px;
+      font-weight: bold;
+      line-height: 1;
+      color: var(--secondary-text-color, #9e9e9e);
+    }
+
     .points-value {
       font-size: 20px;
       font-weight: bold;
@@ -418,6 +432,14 @@ export class PointsBotPersonCard extends LitElement {
             boolean: {},
           },
         },
+        {
+          name: "secondary_value_entity",
+          helper:
+            "Optional entity whose state is displayed (no label) on the left side of the Total row.",
+          selector: {
+            entity: {},
+          },
+        },
       ],
     };
   }
@@ -640,6 +662,15 @@ export class PointsBotPersonCard extends LitElement {
     const accentTextColor = this._computeContrastTextColor(accentColor);
     const colors = extractColorVariants(accentColor);
 
+    const extraEntityId = this._config.secondary_value_entity;
+    const extraStateObj = extraEntityId ? hass.states[extraEntityId] : undefined;
+    const extraValue =
+      extraStateObj &&
+      extraStateObj.state !== "unavailable" &&
+      extraStateObj.state !== "unknown"
+        ? extraStateObj.state
+        : null;
+
     return html`
       <ha-card>
         <div
@@ -658,8 +689,13 @@ export class PointsBotPersonCard extends LitElement {
                 </span>
               </div>
               <div class="points-block">
-                <span class="points-value">${totalPoints}</span>
-                <span class="points-label">Total</span>
+                ${extraValue !== null
+                  ? html`<span class="points-extra">${extraValue}</span>`
+                  : nothing}
+                <div class="points-block-right">
+                  <span class="points-label">Total</span>
+                  <span class="points-value">${totalPoints}</span>
+                </div>
               </div>
             </div>
           </div>
