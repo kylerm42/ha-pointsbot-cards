@@ -5,6 +5,28 @@ Home Assistant Lovelace cards for the [PointsBot](https://github.com/kylerm42/ha
 ## Cards
 
 - **`pointsbot-person-card`** — Displays a family member's total points, weekly points, task lists, and this week's point adjustments. Supports one-click base-task toggling, bonus-task completion, and a manual point adjustment dialog.
+- **`pointsbot-person-rewards-card`** — Binds to one configured PointsBot person, lists that person's rewards, and supports reward creation, editing, deletion, and redemption. Rewards spend banked `total_points` only; current-week points become spendable after rollover.
+
+---
+
+### `pointsbot-person-rewards-card`
+
+```yaml
+type: custom:pointsbot-person-rewards-card
+person: person.alice
+show_disabled_rewards: false
+sort_by: cost
+show_add_reward_button: true
+accent_color: "#B29FE8"
+```
+
+`person` is required and binds the card to that profile; there is no runtime
+person selector or fallback. `sort_by` accepts `cost`, `name`, or `created`. The card displays the
+banked balance, cost, remaining balance, and disabled/insufficient states before
+redemption. It calls only `pointsbot.manage_reward`, `pointsbot.redeem_reward`,
+and `pointsbot.delete_reward` for reward operations. Management controls are
+available to every dashboard viewer who can use the card, matching the backend's
+dashboard-access trust boundary.
 
 ---
 
@@ -80,7 +102,7 @@ entity: sensor.pointsbot_alice
 pnpm install
 pnpm run watch    # Rebuild on changes (used by ha-pointsbot's card-builder service)
 pnpm run build    # One-time production build
-pnpm run test     # Run unit tests (54 tests, Vitest + happy-dom)
+   pnpm run test     # Run unit tests (current count reported by Vitest, Vitest + happy-dom)
 ```
 
 The `dist/` directory is gitignored. In the local development environment it is produced by the `card-builder` Docker service defined in `ha-pointsbot`'s `docker-compose.yml`, which mounts this repo and runs `pnpm run watch` (using pnpm via corepack). The output is then mounted into the HA container's `www/community/pointsbot-cards/` path, mimicking the HACS install path.

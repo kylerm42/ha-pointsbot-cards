@@ -2,7 +2,7 @@ import resolve from "@rollup/plugin-node-resolve";
 import typescript from "@rollup/plugin-typescript";
 
 export default {
-  input: "src/pointsbot-person-card.ts",
+  input: "src/index.ts",
   output: {
     file: "dist/pointsbot-cards.js",
     format: "es",

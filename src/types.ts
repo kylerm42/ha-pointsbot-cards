@@ -37,6 +37,19 @@ export interface PointsBotEntityAttributes {
   name: string | null;
   picture: string | null;
   icon?: string;
+  rewards: Reward[];
+}
+
+export interface Reward {
+  id: string;
+  person_id: string;
+  name: string;
+  cost: number;
+  icon: string;
+  enabled: boolean;
+  description?: string;
+  created: string;
+  modified: string;
 }
 
 export interface CardConfig {
@@ -57,4 +70,14 @@ export interface CardConfig {
    * nothing is rendered in that slot.
    */
   secondary_value_entity?: string;
+}
+
+export interface RewardsCardConfig {
+  type: "custom:pointsbot-person-rewards-card";
+  person: string;
+  hide_card_background?: boolean;
+  show_disabled_rewards?: boolean;
+  sort_by?: "cost" | "name" | "created";
+  show_add_reward_button?: boolean;
+  accent_color?: string;
 }
