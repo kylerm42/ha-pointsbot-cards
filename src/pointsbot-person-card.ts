@@ -609,6 +609,30 @@ export class PointsBotPersonCard extends LitElement {
     });
   }
 
+  private _formatSecondaryValue(
+    stateObj: HomeAssistant["states"][string],
+  ): string {
+    const { state, attributes } = stateObj;
+    if (attributes.device_class !== "monetary") {
+      return state;
+    }
+
+    const currency = attributes.unit_of_measurement;
+    if (typeof currency !== "string" || !/^[A-Z]{3}$/.test(currency)) {
+      return state;
+    }
+
+    const value = Number(state);
+    if (!Number.isFinite(value)) {
+      return state;
+    }
+
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+    }).format(value);
+  }
+
   // -----------------------------------------------------------------
   // Rendering
   // -----------------------------------------------------------------
@@ -668,7 +692,7 @@ export class PointsBotPersonCard extends LitElement {
       extraStateObj &&
       extraStateObj.state !== "unavailable" &&
       extraStateObj.state !== "unknown"
-        ? extraStateObj.state
+        ? this._formatSecondaryValue(extraStateObj)
         : null;
 
     return html`

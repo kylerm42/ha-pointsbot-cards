@@ -389,6 +389,33 @@ describe("PointsBotPersonCard", () => {
       expect(extra?.textContent).toBe("7");
     });
 
+    it("formats monetary secondary entities as currency", async () => {
+      el.setConfig({
+        ...baseConfig,
+        secondary_value_entity: "sensor.bank_balance",
+      });
+      el.hass = {
+        states: {
+          "sensor.pointsbot_alice": {
+            state: "340",
+            attributes: DEFAULT_ATTRS,
+          },
+          "sensor.bank_balance": {
+            state: "135.03",
+            attributes: {
+              device_class: "monetary",
+              unit_of_measurement: "USD",
+            },
+          },
+        },
+        callService: vi.fn().mockResolvedValue(undefined),
+      };
+      await el.updateComplete;
+
+      const extra = el.shadowRoot?.querySelector(".points-extra");
+      expect(extra?.textContent).toBe("$135.03");
+    });
+
     it("renders nothing when the configured entity is missing from hass", async () => {
       el.setConfig({
         ...baseConfig,

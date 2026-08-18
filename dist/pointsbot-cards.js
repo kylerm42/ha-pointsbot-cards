@@ -2196,6 +2196,24 @@ let PointsBotPersonCard = class PointsBotPersonCard extends i {
             minute: "2-digit",
         });
     }
+    _formatSecondaryValue(stateObj) {
+        const { state, attributes } = stateObj;
+        if (attributes.device_class !== "monetary") {
+            return state;
+        }
+        const currency = attributes.unit_of_measurement;
+        if (typeof currency !== "string" || !/^[A-Z]{3}$/.test(currency)) {
+            return state;
+        }
+        const value = Number(state);
+        if (!Number.isFinite(value)) {
+            return state;
+        }
+        return new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency,
+        }).format(value);
+    }
     // -----------------------------------------------------------------
     // Rendering
     // -----------------------------------------------------------------
@@ -2247,7 +2265,7 @@ let PointsBotPersonCard = class PointsBotPersonCard extends i {
         const extraValue = extraStateObj &&
             extraStateObj.state !== "unavailable" &&
             extraStateObj.state !== "unknown"
-            ? extraStateObj.state
+            ? this._formatSecondaryValue(extraStateObj)
             : null;
         return b `
       <ha-card>
